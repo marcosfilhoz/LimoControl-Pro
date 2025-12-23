@@ -39,7 +39,11 @@ export async function initDbIfNeeded() {
     create table if not exists clients (
       id text primary key,
       name text not null,
+      -- Backward compatible: older versions used "contact" (generic).
+      -- Keep it if it already exists, but prefer phone/address moving forward.
       contact text,
+      phone text,
+      address text,
       active boolean not null default true,
       created_at timestamptz not null default now()
     );
@@ -81,6 +85,33 @@ export async function initDbIfNeeded() {
   `);
 
   // Lightweight migrations for existing DBs
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='clients' and column_name='phone') then
+        null;
+      else
+        alter table clients add column phone text;
+      end if;
+    end $$;
+  `);
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='clients' and column_name='address') then
+        null;
+      else
+        alter table clients add column address text;
+      end if;
+    end $$;
+  `);
+  // Best-effort migration: if older DB stored phone in "contact", copy it over when phone is empty.
+  await exec(`
+    update clients
+      set phone = contact
+    where phone is null and contact is not null and nullif(trim(contact),'') is not null;
+  `);
+
   await exec(`
     do $$
     begin
