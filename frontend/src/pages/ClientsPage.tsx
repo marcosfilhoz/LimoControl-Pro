@@ -120,8 +120,6 @@ export function ClientsPage() {
           <div className="col-span-3">Name</div>
           <div className="col-span-3">Phone</div>
           <div className="col-span-4">Address</div>
-          <div className="col-span-4">City</div>
-          <div className="col-span-4">State</div>
           <div className="col-span-2">Status</div>
         </div>
         <div className="divide-y divide-slate-100">
