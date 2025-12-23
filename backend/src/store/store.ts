@@ -209,11 +209,12 @@ export const store = {
   clients: {
     async list(): Promise<Client[]> {
       if (!pool) return memClients;
-      const res = await pool.query(`select id, name, contact, active, created_at from clients order by created_at desc`);
+      const res = await pool.query(`select id, name, contact, phone, address, active, created_at from clients order by created_at desc`);
       return res.rows.map((r: any) => ({
         id: r.id,
         name: r.name,
-        contact: r.contact ?? undefined,
+        phone: (r.phone ?? r.contact) ?? undefined,
+        address: r.address ?? undefined,
         active: !!r.active,
         createdAt: toIso(r.created_at),
       }));
@@ -234,20 +235,36 @@ export const store = {
         return c;
       }
       const existing = await pool.query(
-        `select id, name, contact, active, created_at from clients where lower(name)=lower($1) limit 1`,
+        `select id, name, contact, phone, address, active, created_at from clients where lower(name)=lower($1) limit 1`,
         [normalized]
       );
       if (existing.rowCount) {
         const r = existing.rows[0];
-        return { id: r.id, name: r.name, contact: r.contact ?? undefined, active: !!r.active, createdAt: toIso(r.created_at) };
+        return {
+          id: r.id,
+          name: r.name,
+          phone: (r.phone ?? r.contact) ?? undefined,
+          address: r.address ?? undefined,
+          active: !!r.active,
+          createdAt: toIso(r.created_at),
+        };
       }
       const id = generateId("c");
       const res = await pool.query(
-        `insert into clients (id, name, contact, active) values ($1,$2,$3,true) returning id, name, contact, active, created_at`,
-        [id, normalized, null]
+        `insert into clients (id, name, contact, phone, address, active)
+         values ($1,$2,$3,$4,$5,true)
+         returning id, name, contact, phone, address, active, created_at`,
+        [id, normalized, null, null, null]
       );
       const r = res.rows[0];
-      return { id: r.id, name: r.name, contact: r.contact ?? undefined, active: !!r.active, createdAt: toIso(r.created_at) };
+      return {
+        id: r.id,
+        name: r.name,
+        phone: (r.phone ?? r.contact) ?? undefined,
+        address: r.address ?? undefined,
+        active: !!r.active,
+        createdAt: toIso(r.created_at),
+      };
     },
     async create(input: Omit<Client, "id" | "createdAt" | "active">) {
       if (!pool) {
@@ -257,13 +274,23 @@ export const store = {
       }
       const id = generateId("c");
       const res = await pool.query(
-        `insert into clients (id, name, contact, active) values ($1,$2,$3,true) returning id, name, contact, active, created_at`,
-        [id, input.name, input.contact ?? null]
+        `insert into clients (id, name, contact, phone, address, active)
+         values ($1,$2,$3,$4,$5,true)
+         returning id, name, contact, phone, address, active, created_at`,
+        // Keep "contact" in sync with phone for backward compatibility.
+        [id, input.name, input.phone ?? null, input.phone ?? null, input.address ?? null]
       );
       const r = res.rows[0];
-      return { id: r.id, name: r.name, contact: r.contact ?? undefined, active: !!r.active, createdAt: toIso(r.created_at) };
+      return {
+        id: r.id,
+        name: r.name,
+        phone: (r.phone ?? r.contact) ?? undefined,
+        address: r.address ?? undefined,
+        active: !!r.active,
+        createdAt: toIso(r.created_at),
+      };
     },
-    async update(id: string, input: { name: string; contact?: string }) {
+    async update(id: string, input: { name: string; phone?: string; address?: string }) {
       if (!pool) {
         const idx = memClients.findIndex((c) => c.id === id);
         if (idx === -1) return { error: "Client not found" as const };
@@ -271,12 +298,24 @@ export const store = {
         return { client: memClients[idx] };
       }
       const res = await pool.query(
-        `update clients set name=$2, contact=$3 where id=$1 returning id, name, contact, active, created_at`,
-        [id, input.name, input.contact ?? null]
+        `update clients set name=$2, contact=$3, phone=$4, address=$5
+         where id=$1
+         returning id, name, contact, phone, address, active, created_at`,
+        // Keep "contact" in sync with phone for backward compatibility.
+        [id, input.name, input.phone ?? null, input.phone ?? null, input.address ?? null]
       );
       if (!res.rowCount) return { error: "Client not found" as const };
       const r = res.rows[0];
-      return { client: { id: r.id, name: r.name, contact: r.contact ?? undefined, active: !!r.active, createdAt: toIso(r.created_at) } };
+      return {
+        client: {
+          id: r.id,
+          name: r.name,
+          phone: (r.phone ?? r.contact) ?? undefined,
+          address: r.address ?? undefined,
+          active: !!r.active,
+          createdAt: toIso(r.created_at),
+        },
+      };
     },
     async setActive(id: string, active: boolean) {
       if (!pool) {
@@ -285,10 +324,22 @@ export const store = {
         memClients[idx] = { ...memClients[idx], active };
         return { client: memClients[idx] };
       }
-      const res = await pool.query(`update clients set active=$2 where id=$1 returning id, name, contact, active, created_at`, [id, active]);
+      const res = await pool.query(
+        `update clients set active=$2 where id=$1 returning id, name, contact, phone, address, active, created_at`,
+        [id, active]
+      );
       if (!res.rowCount) return { error: "Client not found" as const };
       const r = res.rows[0];
-      return { client: { id: r.id, name: r.name, contact: r.contact ?? undefined, active: !!r.active, createdAt: toIso(r.created_at) } };
+      return {
+        client: {
+          id: r.id,
+          name: r.name,
+          phone: (r.phone ?? r.contact) ?? undefined,
+          address: r.address ?? undefined,
+          active: !!r.active,
+          createdAt: toIso(r.created_at),
+        },
+      };
     },
     async delete(id: string) {
       if (!pool) {
@@ -300,10 +351,19 @@ export const store = {
       }
       const hasTrips = await pool.query(`select 1 from trips where client_id=$1 limit 1`, [id]);
       if (hasTrips.rowCount) return { error: "Cannot delete client with trips" as const, conflict: true as const };
-      const res = await pool.query(`delete from clients where id=$1 returning id, name, contact, active, created_at`, [id]);
+      const res = await pool.query(`delete from clients where id=$1 returning id, name, contact, phone, address, active, created_at`, [id]);
       if (!res.rowCount) return { error: "Client not found" as const };
       const r = res.rows[0];
-      return { client: { id: r.id, name: r.name, contact: r.contact ?? undefined, active: !!r.active, createdAt: toIso(r.created_at) } };
+      return {
+        client: {
+          id: r.id,
+          name: r.name,
+          phone: (r.phone ?? r.contact) ?? undefined,
+          address: r.address ?? undefined,
+          active: !!r.active,
+          createdAt: toIso(r.created_at),
+        },
+      };
     },
   },
 
