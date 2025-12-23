@@ -30,7 +30,7 @@ type Trip = {
 };
 
 type Driver = { id: string; name: string };
-type Client = { id: string; name: string };
+type Client = { id: string; name: string; phone?: string; address?: string; active: boolean };
 type Company = { id: string; name: string };
 
 export function TripsPage() {
@@ -57,8 +57,8 @@ export function TripsPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [driverId, setDriverId] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("+1 ");
+  const [clientId, setClientId] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [startAt, setStartAt] = useState(() => toLocalInputValue(new Date()));
   const [endAt, setEndAt] = useState(() => toLocalInputValue(new Date()));
@@ -132,6 +132,10 @@ export function TripsPage() {
     () => companies.map((c: any) => ({ id: c.id, label: c.name, disabled: c.active === false })),
     [companies],
   );
+  const clientOptions = useMemo(
+    () => clients.map((c: any) => ({ id: c.id, label: c.name, disabled: c.active === false })),
+    [clients],
+  );
 
   const filterCompanyOptions = useMemo(
     () => [{ id: "", label: "All companies" }, ...companyOptions],
@@ -197,8 +201,10 @@ export function TripsPage() {
     setError(null);
     setSaving(false);
     setDriverId(drivers.find((d: any) => d.active !== false)?.id || drivers[0]?.id || "");
-    setClientName("");
-    setClientPhone("+1 ");
+    const defaultClientId = clients.find((c: any) => c.active !== false)?.id || clients[0]?.id || "";
+    setClientId(defaultClientId);
+    const defaultClient = defaultClientId ? clients.find((c) => c.id === defaultClientId) : null;
+    setClientPhone(defaultClient?.phone ? String(defaultClient.phone) : "");
     setCompanyId(companies.find((c: any) => c.active !== false)?.id || companies[0]?.id || "");
     const dt = toLocalInputValue(new Date());
     setStartAt(dt);
@@ -226,8 +232,8 @@ export function TripsPage() {
       const clientPhoneOut = clientPhone.trim();
       await api.tripCreate({
         driverId,
-        clientName: clientName.trim() ? clientName : undefined,
-        clientPhone: clientPhoneOut && clientPhoneOut !== "+1" ? clientPhoneOut : undefined,
+        clientId: clientId.trim() ? clientId : undefined,
+        clientPhone: clientPhoneOut ? clientPhoneOut : undefined,
         companyId,
         vehicleType: vehicleType ? (vehicleType as any) : null,
         cnf: cnf.trim() ? cnf.trim() : undefined,
@@ -507,17 +513,22 @@ export function TripsPage() {
             </select>
           </label>
 
-          <Input
-            label="Client"
-            placeholder="Type the client name..."
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
+          <AutocompleteSelect
+            label="Cliente"
+            placeholder="Buscar cliente..."
+            options={clientOptions}
+            valueId={clientId}
+            onChangeId={(id) => {
+              setClientId(id);
+              const c = clients.find((x) => x.id === id);
+              if (c?.phone) setClientPhone(String(c.phone));
+            }}
           />
           <Input
-            label="Phone Number (USA)"
+            label="Telefone"
             type="tel"
             inputMode="tel"
-            placeholder='+1 (555) 555-5555'
+            placeholder="(11) 99999-9999"
             value={clientPhone}
             onChange={(e) => setClientPhone(e.target.value)}
           />
@@ -611,7 +622,7 @@ export function TripsPage() {
           <div className="flex gap-2">
             <Button
               onClick={submit}
-              disabled={saving || !driverId || !companyId || !origin.trim() || !destination.trim()}
+              disabled={saving || !driverId || !clientId || !companyId || !origin.trim() || !destination.trim()}
             >
               {saving ? "Saving..." : "Save"}
             </Button>
