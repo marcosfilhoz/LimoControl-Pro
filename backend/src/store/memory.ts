@@ -23,7 +23,7 @@ export const drivers: Driver[] = [
 ];
 
 export const clients: Client[] = [
-  { id: "c_1", name: "Cliente Demo", contact: "contato@cliente.com", active: true, createdAt: now() },
+  { id: "c_1", name: "Cliente Demo", phone: "11999990000", address: "Av. Paulista, 1000 - São Paulo/SP", active: true, createdAt: now() },
 ];
 
 export const companies: Company[] = [

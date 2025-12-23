@@ -21,7 +21,8 @@ export interface Driver {
 export interface Client {
   id: string;
   name: string;
-  contact?: string;
+  phone?: string;
+  address?: string;
   active: boolean;
   createdAt: string;
 }
