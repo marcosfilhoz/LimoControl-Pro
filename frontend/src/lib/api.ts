@@ -71,9 +71,10 @@ export const api = {
   driverSetActive: (id: string, active: boolean) =>
     request(`/drivers/${id}/active`, { method: "PATCH", body: JSON.stringify({ active }) }),
 
-  clientsList: () => request<Array<{ id: string; name: string; contact?: string; active: boolean }>>("/clients"),
-  clientCreate: (data: { name: string; contact?: string }) => request("/clients", { method: "POST", body: JSON.stringify(data) }),
-  clientUpdate: (id: string, data: { name: string; contact?: string }) =>
+  clientsList: () => request<Array<{ id: string; name: string; phone?: string; address?: string; active: boolean }>>("/clients"),
+  clientCreate: (data: { name: string; phone?: string; address?: string }) =>
+    request("/clients", { method: "POST", body: JSON.stringify(data) }),
+  clientUpdate: (id: string, data: { name: string; phone?: string; address?: string }) =>
     request(`/clients/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   clientDelete: (id: string) => request(`/clients/${id}`, { method: "DELETE" }),
   clientSetActive: (id: string, active: boolean) =>
@@ -121,6 +122,7 @@ export const api = {
     >("/trips"),
   tripCreate: (data: {
     driverId: string;
+    clientId?: string;
     clientName?: string;
     companyId: string;
     vehicleType?: "SUV" | "Sedan" | null;
