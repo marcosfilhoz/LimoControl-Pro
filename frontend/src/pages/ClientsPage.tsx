@@ -105,23 +105,23 @@ export function ClientsPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-xl font-semibold">Clientes</div>
+          <div className="text-xl font-semibold">Clients</div>
           <div className="text-sm text-slate-600">
-            Cadastre, edite, exclua e desative (botão direito). Ativos: {activeCount}/{items.length}
+            Create, edit, delete, and deactivate (right-click). Active: {activeCount}/{items.length}
           </div>
         </div>
-        <Button onClick={openCreate}>Cadastrar cliente</Button>
+        <Button onClick={openCreate}>Add client</Button>
       </div>
 
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
-          <div className="col-span-3">Nome</div>
-          <div className="col-span-3">Telefone</div>
-          <div className="col-span-4">Endereço</div>
+          <div className="col-span-3">Name</div>
+          <div className="col-span-3">Phone</div>
+          <div className="col-span-4">Address</div>
           <div className="col-span-2">Status</div>
-          <div className="col-span-2 text-right">Ações</div>
+          <div className="col-span-2 text-right">Actions</div>
         </div>
         <div className="divide-y divide-slate-100">
           {items.map((c) => (
@@ -136,30 +136,30 @@ export function ClientsPage() {
             >
               <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
                 <div className="md:col-span-3">
-                  <div className="text-slate-600 md:hidden">Nome</div>
+                  <div className="text-slate-600 md:hidden">Name</div>
                   <div className="font-medium">{c.name}</div>
                 </div>
                 <div className="md:col-span-3">
-                  <div className="text-slate-600 md:hidden">Telefone</div>
+                  <div className="text-slate-600 md:hidden">Phone</div>
                   <div className="text-slate-700">{c.phone || "—"}</div>
                 </div>
                 <div className="md:col-span-4">
-                  <div className="text-slate-600 md:hidden">Endereço</div>
+                  <div className="text-slate-600 md:hidden">Address</div>
                   <div className="text-slate-700">{c.address || "—"}</div>
                 </div>
                 <div className="md:col-span-2">
                   <div className="text-slate-600 md:hidden">Status</div>
                   <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${c.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                    {c.active ? "Ativo" : "Inativo"}
+                    {c.active ? "Active" : "Inactive"}
                   </span>
                 </div>
                 <div className="md:col-span-2 md:text-right">
                   <div className="flex flex-nowrap items-center gap-1 md:justify-end">
                     <Button className="px-2 py-1" variant="ghost" onClick={() => openEdit(c)}>
-                      Editar
+                      Edit
                     </Button>
                     <Button className="px-2 py-1" variant="ghost" onClick={() => remove(c)}>
-                      Excluir
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -180,28 +180,28 @@ export function ClientsPage() {
           menu.client
             ? [
                 menu.client.active
-                  ? { label: "Desativar", onClick: () => toggleActive(menu.client!, false) }
-                  : { label: "Reativar", onClick: () => toggleActive(menu.client!, true) },
+                  ? { label: "Deactivate", onClick: () => toggleActive(menu.client!, false) }
+                  : { label: "Reactivate", onClick: () => toggleActive(menu.client!, true) },
               ]
             : []
         }
       />
 
       <Modal
-        title={editing ? "Editar cliente" : "Cadastrar cliente"}
+        title={editing ? "Edit client" : "Add client"}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
       >
         <div className="space-y-4">
-          <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input label="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
-          <Input label="Endereço" value={address} onChange={(e) => setAddress(e.target.value)} />
+          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
+          <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
           <div className="flex gap-2">
             <Button onClick={submit} disabled={!name.trim()}>
-              Salvar
+              Save
             </Button>
             <Button variant="ghost" onClick={() => setModalOpen(false)}>
-              Cancelar
+              Cancel
             </Button>
           </div>
         </div>
