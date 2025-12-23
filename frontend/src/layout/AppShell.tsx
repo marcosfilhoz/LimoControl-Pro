@@ -9,6 +9,7 @@ const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/trips", label: "Trips" },
   { to: "/drivers", label: "Drivers" },
+  { to: "/clients", label: "Cadastro de Cliente" },
   { to: "/companies", label: "Companies" },
   { to: "/users", label: "Users", adminOnly: true },
 ];
