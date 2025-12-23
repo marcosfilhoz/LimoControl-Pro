@@ -6,7 +6,8 @@ const router = Router();
 
 const clientSchema = z.object({
   name: z.string().min(2),
-  contact: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
 });
 
 const activeSchema = z.object({

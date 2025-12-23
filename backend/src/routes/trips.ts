@@ -7,6 +7,9 @@ const router = Router();
 
 const tripSchema = z.object({
   driverId: z.string(),
+  // Preferred: select a registered client by id
+  clientId: z.string().optional(),
+  // Backward compatible: older clients send a free-text name
   clientName: z.string().optional(),
   clientPhone: z.string().optional(),
   companyId: z.string(),
@@ -67,10 +70,18 @@ router.post("/", (req, res) => {
     if (!(await store.drivers.exists(driverId))) return res.status(400).json({ error: "Driver not found" });
     if (!(await store.companies.exists(companyId))) return res.status(400).json({ error: "Company not found" });
 
-    const clientName = (parsed.data.clientName || "").trim();
-    const client = clientName ? await store.clients.ensureByName(clientName) : null;
+    let clientId: string | null = null;
+    if (parsed.data.clientId && parsed.data.clientId.trim()) {
+      const id = parsed.data.clientId.trim();
+      if (!(await store.clients.exists(id))) return res.status(400).json({ error: "Client not found" });
+      clientId = id;
+    } else {
+      const clientName = (parsed.data.clientName || "").trim();
+      const client = clientName ? await store.clients.ensureByName(clientName) : null;
+      clientId = client?.id ?? null;
+    }
     const createdByUserId = (req as AuthedRequest).auth?.userId || "unknown";
-    const trip = await store.trips.create({ ...parsed.data, clientId: client?.id ?? null } as any, createdByUserId);
+    const trip = await store.trips.create({ ...parsed.data, clientId } as any, createdByUserId);
     return res.status(201).json(trip);
   })().catch((err) => {
     console.error(err);
@@ -94,9 +105,17 @@ router.put("/:id", (req, res) => {
     if (!(await store.drivers.exists(driverId))) return res.status(400).json({ error: "Driver not found" });
     if (!(await store.companies.exists(companyId))) return res.status(400).json({ error: "Company not found" });
 
-    const clientName = (parsed.data.clientName || "").trim();
-    const client = clientName ? await store.clients.ensureByName(clientName) : null;
-    const out = await store.trips.update(req.params.id, { ...parsed.data, clientId: client?.id ?? null } as any);
+    let clientId: string | null = null;
+    if (parsed.data.clientId && parsed.data.clientId.trim()) {
+      const id = parsed.data.clientId.trim();
+      if (!(await store.clients.exists(id))) return res.status(400).json({ error: "Client not found" });
+      clientId = id;
+    } else {
+      const clientName = (parsed.data.clientName || "").trim();
+      const client = clientName ? await store.clients.ensureByName(clientName) : null;
+      clientId = client?.id ?? null;
+    }
+    const out = await store.trips.update(req.params.id, { ...parsed.data, clientId } as any);
     if ("error" in out) return res.status(404).json({ error: out.error });
     return res.json(out.trip);
   })().catch((err) => {
