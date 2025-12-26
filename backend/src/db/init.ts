@@ -75,6 +75,7 @@ export async function initDbIfNeeded() {
       end_at timestamptz not null,
       origin text not null,
       destination text not null,
+      stop text,
       miles double precision not null,
       duration_minutes integer not null,
       price double precision not null,
@@ -102,6 +103,16 @@ export async function initDbIfNeeded() {
         null;
       else
         alter table clients add column address text;
+      end if;
+    end $$;
+  `);
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='clients' and column_name='company_id') then
+        null;
+      else
+        alter table clients add column company_id text references companies(id) on delete set null;
       end if;
     end $$;
   `);
