@@ -4,7 +4,12 @@ import { pool } from "./pool";
 
 async function exec(sql: string) {
   if (!pool) return;
-  await pool.query(sql);
+  try {
+    await pool.query(sql);
+  } catch (err: any) {
+    console.error("DB migration error:", err?.message || err);
+    throw err;
+  }
 }
 
 export async function initDbIfNeeded() {
@@ -113,6 +118,7 @@ export async function initDbIfNeeded() {
         null;
       else
         alter table clients add column company_id text references companies(id) on delete set null;
+        raise notice 'Added company_id column to clients table';
       end if;
     end $$;
   `);
@@ -193,6 +199,17 @@ export async function initDbIfNeeded() {
         where table_name='trips' and column_name='client_id' and is_nullable='NO'
       ) then
         alter table trips alter column client_id drop not null;
+      end if;
+    end $$;
+  `);
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='stop') then
+        null;
+      else
+        alter table trips add column stop text;
+        raise notice 'Added stop column to trips table';
       end if;
     end $$;
   `);
