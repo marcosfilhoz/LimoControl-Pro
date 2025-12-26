@@ -8,6 +8,7 @@ const clientSchema = z.object({
   name: z.string().min(2),
   phone: z.string().optional(),
   address: z.string().optional(),
+  companyId: z.string().optional(),
 });
 
 const activeSchema = z.object({
