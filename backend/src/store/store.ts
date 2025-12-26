@@ -209,12 +209,13 @@ export const store = {
   clients: {
     async list(): Promise<Client[]> {
       if (!pool) return memClients;
-      const res = await pool.query(`select id, name, contact, phone, address, active, created_at from clients order by created_at desc`);
+      const res = await pool.query(`select id, name, contact, phone, address, company_id, active, created_at from clients order by created_at desc`);
       return res.rows.map((r: any) => ({
         id: r.id,
         name: r.name,
         phone: (r.phone ?? r.contact) ?? undefined,
         address: r.address ?? undefined,
+        companyId: r.company_id ?? undefined,
         active: !!r.active,
         createdAt: toIso(r.created_at),
       }));
@@ -235,7 +236,7 @@ export const store = {
         return c;
       }
       const existing = await pool.query(
-        `select id, name, contact, phone, address, active, created_at from clients where lower(name)=lower($1) limit 1`,
+        `select id, name, contact, phone, address, company_id, active, created_at from clients where lower(name)=lower($1) limit 1`,
         [normalized]
       );
       if (existing.rowCount) {
@@ -245,16 +246,17 @@ export const store = {
           name: r.name,
           phone: (r.phone ?? r.contact) ?? undefined,
           address: r.address ?? undefined,
+          companyId: r.company_id ?? undefined,
           active: !!r.active,
           createdAt: toIso(r.created_at),
         };
       }
       const id = generateId("c");
       const res = await pool.query(
-        `insert into clients (id, name, contact, phone, address, active)
-         values ($1,$2,$3,$4,$5,true)
-         returning id, name, contact, phone, address, active, created_at`,
-        [id, normalized, null, null, null]
+        `insert into clients (id, name, contact, phone, address, company_id, active)
+         values ($1,$2,$3,$4,$5,$6,true)
+         returning id, name, contact, phone, address, company_id, active, created_at`,
+        [id, normalized, null, null, null, null]
       );
       const r = res.rows[0];
       return {
@@ -262,6 +264,7 @@ export const store = {
         name: r.name,
         phone: (r.phone ?? r.contact) ?? undefined,
         address: r.address ?? undefined,
+        companyId: r.company_id ?? undefined,
         active: !!r.active,
         createdAt: toIso(r.created_at),
       };
@@ -274,11 +277,11 @@ export const store = {
       }
       const id = generateId("c");
       const res = await pool.query(
-        `insert into clients (id, name, contact, phone, address, active)
-         values ($1,$2,$3,$4,$5,true)
-         returning id, name, contact, phone, address, active, created_at`,
+        `insert into clients (id, name, contact, phone, address, company_id, active)
+         values ($1,$2,$3,$4,$5,$6,true)
+         returning id, name, contact, phone, address, company_id, active, created_at`,
         // Keep "contact" in sync with phone for backward compatibility.
-        [id, input.name, input.phone ?? null, input.phone ?? null, input.address ?? null]
+        [id, input.name, input.phone ?? null, input.phone ?? null, input.address ?? null, input.companyId ?? null]
       );
       const r = res.rows[0];
       return {
@@ -286,11 +289,12 @@ export const store = {
         name: r.name,
         phone: (r.phone ?? r.contact) ?? undefined,
         address: r.address ?? undefined,
+        companyId: r.company_id ?? undefined,
         active: !!r.active,
         createdAt: toIso(r.created_at),
       };
     },
-    async update(id: string, input: { name: string; phone?: string; address?: string }) {
+    async update(id: string, input: { name: string; phone?: string; address?: string; companyId?: string }) {
       if (!pool) {
         const idx = memClients.findIndex((c) => c.id === id);
         if (idx === -1) return { error: "Client not found" as const };
@@ -298,11 +302,11 @@ export const store = {
         return { client: memClients[idx] };
       }
       const res = await pool.query(
-        `update clients set name=$2, contact=$3, phone=$4, address=$5
+        `update clients set name=$2, contact=$3, phone=$4, address=$5, company_id=$6
          where id=$1
-         returning id, name, contact, phone, address, active, created_at`,
+         returning id, name, contact, phone, address, company_id, active, created_at`,
         // Keep "contact" in sync with phone for backward compatibility.
-        [id, input.name, input.phone ?? null, input.phone ?? null, input.address ?? null]
+        [id, input.name, input.phone ?? null, input.phone ?? null, input.address ?? null, input.companyId ?? null]
       );
       if (!res.rowCount) return { error: "Client not found" as const };
       const r = res.rows[0];
@@ -312,6 +316,7 @@ export const store = {
           name: r.name,
           phone: (r.phone ?? r.contact) ?? undefined,
           address: r.address ?? undefined,
+          companyId: r.company_id ?? undefined,
           active: !!r.active,
           createdAt: toIso(r.created_at),
         },
@@ -325,7 +330,7 @@ export const store = {
         return { client: memClients[idx] };
       }
       const res = await pool.query(
-        `update clients set active=$2 where id=$1 returning id, name, contact, phone, address, active, created_at`,
+        `update clients set active=$2 where id=$1 returning id, name, contact, phone, address, company_id, active, created_at`,
         [id, active]
       );
       if (!res.rowCount) return { error: "Client not found" as const };
@@ -336,6 +341,7 @@ export const store = {
           name: r.name,
           phone: (r.phone ?? r.contact) ?? undefined,
           address: r.address ?? undefined,
+          companyId: r.company_id ?? undefined,
           active: !!r.active,
           createdAt: toIso(r.created_at),
         },
@@ -351,7 +357,7 @@ export const store = {
       }
       const hasTrips = await pool.query(`select 1 from trips where client_id=$1 limit 1`, [id]);
       if (hasTrips.rowCount) return { error: "Cannot delete client with trips" as const, conflict: true as const };
-      const res = await pool.query(`delete from clients where id=$1 returning id, name, contact, phone, address, active, created_at`, [id]);
+      const res = await pool.query(`delete from clients where id=$1 returning id, name, contact, phone, address, company_id, active, created_at`, [id]);
       if (!res.rowCount) return { error: "Client not found" as const };
       const r = res.rows[0];
       return {
@@ -360,6 +366,7 @@ export const store = {
           name: r.name,
           phone: (r.phone ?? r.contact) ?? undefined,
           address: r.address ?? undefined,
+          companyId: r.company_id ?? undefined,
           active: !!r.active,
           createdAt: toIso(r.created_at),
         },
@@ -505,7 +512,7 @@ export const store = {
         where.push(`meet_greet ilike $${params.length}`);
       }
       const sql =
-        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, miles, duration_minutes, price, received, notes, created_at from trips` +
+        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, notes, created_at from trips` +
         (where.length ? ` where ${where.join(" and ")}` : "") +
         ` order by start_at desc`;
       const res = await pool.query(sql, params);
@@ -524,6 +531,7 @@ export const store = {
         endAt: toIso(r.end_at),
         origin: r.origin,
         destination: r.destination,
+        stop: r.stop ?? undefined,
         miles: toNum(r.miles),
         durationMinutes: toNum(r.duration_minutes),
         price: toNum(r.price),
@@ -538,7 +546,7 @@ export const store = {
         return memTrips.find((t) => t.id === id) || null;
       }
       const res = await pool.query(
-        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, miles, duration_minutes, price, received, notes, created_at
+        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, notes, created_at
          from trips where id=$1 limit 1`,
         [id]
       );
@@ -559,6 +567,7 @@ export const store = {
         endAt: toIso(r.end_at),
         origin: r.origin,
         destination: r.destination,
+        stop: r.stop ?? undefined,
         miles: toNum(r.miles),
         durationMinutes: toNum(r.duration_minutes),
         price: toNum(r.price),
@@ -583,9 +592,9 @@ export const store = {
       }
       const id = generateId("t");
       const res = await pool.query(
-        `insert into trips (id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, miles, duration_minutes, price, received, notes)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-         returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, miles, duration_minutes, price, received, notes, created_at`,
+        `insert into trips (id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, notes)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+         returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, notes, created_at`,
         [
           id,
           createdByUserId,
@@ -601,6 +610,7 @@ export const store = {
           input.endAt,
           input.origin,
           input.destination,
+          input.stop ?? null,
           input.miles,
           input.durationMinutes,
           input.price,
@@ -624,6 +634,7 @@ export const store = {
         endAt: toIso(r.end_at),
         origin: r.origin,
         destination: r.destination,
+        stop: r.stop ?? undefined,
         miles: toNum(r.miles),
         durationMinutes: toNum(r.duration_minutes),
         price: toNum(r.price),
@@ -642,10 +653,10 @@ export const store = {
       }
       const res = await pool.query(
         `update trips set
-          driver_id=$2, client_id=$3, company_id=$4, vehicle_type=$5, cnf=$6, flight_number=$7, client_phone=coalesce($8, client_phone), meet_greet=coalesce($9, meet_greet), start_at=$10, end_at=$11, origin=$12, destination=$13,
-          miles=$14, duration_minutes=$15, price=$16, received=coalesce($17, received), notes=$18
+          driver_id=$2, client_id=$3, company_id=$4, vehicle_type=$5, cnf=$6, flight_number=$7, client_phone=coalesce($8, client_phone), meet_greet=coalesce($9, meet_greet), start_at=$10, end_at=$11, origin=$12, destination=$13, stop=$14,
+          miles=$15, duration_minutes=$16, price=$17, received=coalesce($18, received), notes=$19
         where id=$1
-        returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, miles, duration_minutes, price, received, notes, created_at`,
+        returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, notes, created_at`,
         [
           id,
           input.driverId,
@@ -660,6 +671,7 @@ export const store = {
           input.endAt,
           input.origin,
           input.destination,
+          input.stop ?? null,
           input.miles,
           input.durationMinutes,
           input.price,
@@ -685,6 +697,7 @@ export const store = {
           endAt: toIso(r.end_at),
           origin: r.origin,
           destination: r.destination,
+          stop: r.stop ?? undefined,
           miles: toNum(r.miles),
           durationMinutes: toNum(r.duration_minutes),
           price: toNum(r.price),
@@ -703,7 +716,7 @@ export const store = {
         return { trip: memTrips[idx] };
       }
       const res = await pool.query(
-        `update trips set received=$2 where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, miles, duration_minutes, price, received, notes, created_at`,
+        `update trips set received=$2 where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, notes, created_at`,
         [id, received]
       );
       if (!res.rowCount) return { error: "Trip not found" as const };
@@ -724,6 +737,7 @@ export const store = {
           endAt: toIso(r.end_at),
           origin: r.origin,
           destination: r.destination,
+          stop: r.stop ?? undefined,
           miles: toNum(r.miles),
           durationMinutes: toNum(r.duration_minutes),
           price: toNum(r.price),
@@ -746,7 +760,7 @@ export const store = {
       if (!res.rowCount) return { error: "Trip not found" as const };
       if (res.rows[0].received) return { error: "Cannot delete a received trip" as const, conflict: true as const };
       const del = await pool.query(
-        `delete from trips where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, miles, duration_minutes, price, received, notes, created_at`,
+        `delete from trips where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, notes, created_at`,
         [id]
       );
       const r = del.rows[0];
@@ -766,6 +780,7 @@ export const store = {
           endAt: toIso(r.end_at),
           origin: r.origin,
           destination: r.destination,
+          stop: r.stop ?? undefined,
           miles: toNum(r.miles),
           durationMinutes: toNum(r.duration_minutes),
           price: toNum(r.price),
