@@ -6,6 +6,7 @@ import { Input } from "../components/Input";
 import { Modal } from "../components/Modal";
 import { api } from "../lib/api";
 import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type Trip = {
   id: string;
@@ -761,10 +762,8 @@ function exportTripPdf(
   refs: { driverById: Map<string, string>; clientById: Map<string, string>; companyById: Map<string, string> },
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
   const left = 40;
-  const right = 40;
-  const maxWidth = pageWidth - left - right;
+  const top = 40;
 
   const driver = refs.driverById.get(trip.driverId) || trip.driverId;
   const client = trip.clientId ? refs.clientById.get(trip.clientId) || trip.clientId : "—";
@@ -772,51 +771,80 @@ function exportTripPdf(
   const vehicle = trip.vehicleType ? String(trip.vehicleType) : "—";
   const meetGreet = meetGreetLabel(trip.meetGreet);
   const phone = trip.clientPhone ? String(trip.clientPhone) : "—";
-  const route = `${trip.origin} -> ${trip.destination}`;
   const status = trip.received ? "Paid" : "Unpaid";
+  const cnf = trip.cnf ? String(trip.cnf) : "—";
 
-  doc.setFontSize(14);
-  doc.text("Trip Details", left, 44);
+  // Title
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("Trip Details", left, top);
+
+  // CNF Number (replacing ID)
   doc.setFontSize(10);
-  doc.text(`ID: ${trip.id}`, left, 62);
+  doc.setFont("helvetica", "normal");
+  doc.text(`CNF: ${cnf}`, left, top + 20);
 
-  let y = 88;
-  const line = (label: string, value: string) => {
-    doc.setFontSize(10);
-    doc.text(`${label}:`, left, y);
-    doc.setFontSize(10);
-    const xVal = left + 110;
-    const wrapped = doc.splitTextToSize(value || "—", maxWidth - 110);
-    doc.text(wrapped, xVal, y);
-    y += 16 + (wrapped.length - 1) * 12;
-  };
+  // Prepare table data
+  const tableData = [
+    ["Date/Time", `${formatDate(trip.startAt)} ${formatTime(trip.startAt)}`],
+    ["Payment Status", status],
+    ["Driver", driver],
+    ["Client", client],
+    ["Phone Number", phone],
+    ["Company", company],
+    ["Vehicle Type", vehicle],
+    ["Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—"],
+    ["Meet & Greet", meetGreet],
+    ["Pickup Address", trip.origin],
+    ["Dropoff Address", trip.destination],
+    ["Stop", trip.stop ? String(trip.stop) : "—"],
+    ["Amount", `$ ${trip.price.toFixed(2)}`],
+  ];
 
-  line("Date/Time", `${formatDate(trip.startAt)} ${formatTime(trip.startAt)}`);
-  line("Payment", status);
-  line("Driver", driver);
-  line("Client", client);
-  line("Phone number", phone);
-  line("Company", company);
-  line("Vehicle", vehicle);
-  line("CNF", trip.cnf ? String(trip.cnf) : "—");
-  line("Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—");
-  line("Meet & Greet", meetGreet);
-  line("Route", route);
-  if (trip.stop) line("Stop", trip.stop);
-  line("Amount", `$ ${trip.price.toFixed(2)}`);
+  // Create table
+  autoTable(doc, {
+    startY: top + 35,
+    head: [["Field", "Value"]],
+    body: tableData,
+    theme: "grid",
+    headStyles: {
+      fillColor: [51, 51, 51],
+      textColor: 255,
+      fontStyle: "bold",
+      fontSize: 10,
+    },
+    bodyStyles: {
+      fontSize: 9,
+      textColor: [0, 0, 0],
+    },
+    columnStyles: {
+      0: { cellWidth: 120, fontStyle: "bold" },
+      1: { cellWidth: "auto" },
+    },
+    styles: {
+      cellPadding: 5,
+      lineColor: [200, 200, 200],
+      lineWidth: 0.5,
+    },
+    margin: { left: left, right: left },
+  });
 
+  // Add notes if available
   if (trip.notes && trip.notes.trim()) {
-    y += 8;
+    const finalY = (doc as any).lastAutoTable.finalY || top + 200;
     doc.setFontSize(10);
-    doc.text("Notes:", left, y);
-    y += 14;
-    const wrapped = doc.splitTextToSize(trip.notes.trim(), maxWidth);
-    doc.text(wrapped, left, y);
-    y += wrapped.length * 12;
+    doc.setFont("helvetica", "bold");
+    doc.text("Notes:", left, finalY + 20);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const notesLines = doc.splitTextToSize(trip.notes.trim(), doc.internal.pageSize.getWidth() - left * 2);
+    doc.text(notesLines, left, finalY + 35);
   }
 
+  // Save PDF
   const fileSafeDate = new Date(trip.startAt).toISOString().slice(0, 10);
-  doc.save(`trip_${fileSafeDate}_${trip.id}.pdf`);
+  const fileName = trip.cnf ? `trip_${trip.cnf}_${fileSafeDate}.pdf` : `trip_${fileSafeDate}_${trip.id}.pdf`;
+  doc.save(fileName);
 }
 
 function formatDateTime(iso: string) {
