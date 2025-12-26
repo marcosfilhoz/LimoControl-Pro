@@ -12,7 +12,7 @@ type Trip = {
   driverId: string;
   clientId: string | null;
   companyId: string;
-  vehicleType?: "SUV" | "Sedan" | null;
+  vehicleType?: "SUV" | "Sedan" | "Economy" | null;
   cnf?: string;
   flightNumber?: string;
   // Free-text (e.g., greeter name / instructions). Empty/undefined means no meet & greet.
@@ -22,6 +22,7 @@ type Trip = {
   endAt: string;
   origin: string;
   destination: string;
+  stop?: string;
   miles: number;
   durationMinutes: number;
   price: number;
@@ -53,9 +54,10 @@ export function TripsPage() {
   const [filterCnfQuery, setFilterCnfQuery] = useState("");
   const [filterFlightNumberQuery, setFilterFlightNumberQuery] = useState("");
   const [filterMeetGreet, setFilterMeetGreet] = useState<"" | "yes" | "no">("");
-  const [filterVehicleType, setFilterVehicleType] = useState<"" | "SUV" | "Sedan">("");
+  const [filterVehicleType, setFilterVehicleType] = useState<"" | "SUV" | "Sedan" | "Economy">("");
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [driverId, setDriverId] = useState("");
   const [clientId, setClientId] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -67,9 +69,10 @@ export function TripsPage() {
   const [meetGreet, setMeetGreet] = useState("");
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
+  const [stop, setStop] = useState("");
   const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
-  const [vehicleType, setVehicleType] = useState<"SUV" | "Sedan" | "">("");
+  const [vehicleType, setVehicleType] = useState<"SUV" | "Sedan" | "Economy" | "">("");
   const [received, setReceived] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTrip, setDetailsTrip] = useState<Trip | null>(null);
@@ -200,6 +203,7 @@ export function TripsPage() {
   function openCreate() {
     setError(null);
     setSaving(false);
+    setEditingTrip(null);
     setDriverId(drivers.find((d: any) => d.active !== false)?.id || drivers[0]?.id || "");
     const defaultClientId = clients.find((c: any) => c.active !== false)?.id || clients[0]?.id || "";
     setClientId(defaultClientId);
@@ -214,10 +218,36 @@ export function TripsPage() {
     setMeetGreet("");
     setOrigin("");
     setDestination("");
+    setStop("");
     setPrice("");
     setNotes("");
     setVehicleType("");
     setReceived(false);
+    setModalOpen(true);
+  }
+
+  function openEdit(trip: Trip) {
+    setError(null);
+    setSaving(false);
+    setEditingTrip(trip);
+    setDriverId(trip.driverId);
+    setClientId(trip.clientId || "");
+    setClientPhone(trip.clientPhone ? String(trip.clientPhone) : "");
+    setCompanyId(trip.companyId);
+    const startAtValue = toLocalInputValue(new Date(trip.startAt));
+    setStartAt(startAtValue);
+    setEndAt(startAtValue); // Keep endAt equal to startAt for backend compatibility
+    setCnf(trip.cnf || "");
+    setFlightNumber(trip.flightNumber || "");
+    setMeetGreet(trip.meetGreet || "");
+    setOrigin(trip.origin);
+    setDestination(trip.destination);
+    setStop(trip.stop || "");
+    setPrice(String(trip.price));
+    setNotes(trip.notes || "");
+    setVehicleType(trip.vehicleType || "");
+    setReceived(trip.received);
+    setDetailsOpen(false);
     setModalOpen(true);
   }
 
@@ -230,7 +260,7 @@ export function TripsPage() {
       const endAtOut = startAt;
       const meetGreetOut = meetGreet.trim();
       const clientPhoneOut = clientPhone.trim();
-      await api.tripCreate({
+      const tripData = {
         driverId,
         clientId: clientId.trim() ? clientId : undefined,
         clientPhone: clientPhoneOut ? clientPhoneOut : undefined,
@@ -243,12 +273,18 @@ export function TripsPage() {
         endAt: fromLocalInputValue(endAtOut),
         origin,
         destination,
-        miles: 0,
-        durationMinutes: 0,
+        stop: stop.trim() ? stop.trim() : undefined,
+        miles: editingTrip?.miles || 0,
+        durationMinutes: editingTrip?.durationMinutes || 0,
         price: Number(price) || 0,
         received,
         notes: notes || undefined,
-      });
+      };
+      if (editingTrip) {
+        await api.tripUpdate(editingTrip.id, tripData);
+      } else {
+        await api.tripCreate(tripData);
+      }
       setModalOpen(false);
       await refresh();
     } catch {
@@ -393,6 +429,7 @@ export function TripsPage() {
               <option value="">All</option>
               <option value="SUV">SUV</option>
               <option value="Sedan">Sedan</option>
+              <option value="Economy">Economy</option>
             </select>
           </label>
           <label className="block md:col-span-2">
@@ -496,7 +533,7 @@ export function TripsPage() {
         </div>
       </div>
 
-      <Modal title="Add trip" open={modalOpen} onClose={() => setModalOpen(false)}>
+      <Modal title={editingTrip ? "Edit trip" : "Add trip"} open={modalOpen} onClose={() => setModalOpen(false)}>
         <div className="space-y-4">
           <label className="block">
             <div className="mb-1 text-sm font-medium text-slate-700">Driver</div>
@@ -553,6 +590,15 @@ export function TripsPage() {
                 />
                 Sedan
               </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+                  checked={vehicleType === "Economy"}
+                  onChange={(e) => setVehicleType(e.target.checked ? "Economy" : "")}
+                />
+                Economy
+              </label>
             </div>
           </div>
 
@@ -580,6 +626,8 @@ export function TripsPage() {
             <Input label="Pickup" value={origin} onChange={(e) => setOrigin(e.target.value)} />
             <Input label="Dropoff" value={destination} onChange={(e) => setDestination(e.target.value)} />
           </div>
+
+          <Input label="Stop" value={stop} onChange={(e) => setStop(e.target.value)} />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Input label="CNF" value={cnf} onChange={(e) => setCnf(e.target.value)} />
@@ -649,6 +697,7 @@ export function TripsPage() {
               <Detail label="Meet & Greet" value={meetGreetLabel(detailsTrip.meetGreet)} />
               <Detail label="Pickup Address" value={detailsTrip.origin} />
               <Detail label="Dropoff Address" value={detailsTrip.destination} />
+              <Detail label="Stop" value={detailsTrip.stop ? String(detailsTrip.stop) : "—"} />
               <Detail label="Amount" value={`$ ${detailsTrip.price.toFixed(2)}`} />
               <Detail label="Date/Time" value={`${formatDate(detailsTrip.startAt)} ${formatTime(detailsTrip.startAt)}`} />
             </div>
@@ -665,6 +714,12 @@ export function TripsPage() {
                 onClick={() => exportTripPdf(detailsTrip, { driverById, clientById, companyById })}
               >
                 Export PDF
+              </button>
+              <button
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+                onClick={() => openEdit(detailsTrip)}
+              >
+                Edit trip
               </button>
               {!detailsTrip.received ? (
                 <button
@@ -747,6 +802,7 @@ function exportTripPdf(
   line("Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—");
   line("Meet & Greet", meetGreet);
   line("Route", route);
+  if (trip.stop) line("Stop", trip.stop);
   line("Amount", `$ ${trip.price.toFixed(2)}`);
 
   if (trip.notes && trip.notes.trim()) {

@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { AutocompleteSelect } from "../components/AutocompleteSelect";
 import { Button } from "../components/Button";
 import { ContextMenu } from "../components/ContextMenu";
 import { Input } from "../components/Input";
 import { Modal } from "../components/Modal";
 import { api } from "../lib/api";
 
-type Client = { id: string; name: string; phone?: string; address?: string; active: boolean };
+type Client = { id: string; name: string; phone?: string; address?: string; companyId?: string; active: boolean };
 
 export function ClientsPage() {
   const [items, setItems] = useState<Client[]>([]);
+  const [companies, setCompanies] = useState<Array<{ id: string; name: string; active: boolean }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,6 +19,7 @@ export function ClientsPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [companyId, setCompanyId] = useState("");
 
   const [menu, setMenu] = useState<{ open: boolean; x: number; y: number; client: Client | null }>({
     open: false,
@@ -30,9 +33,12 @@ export function ClientsPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    api.clientsList()
-      .then((d) => {
-        if (alive) setItems(d);
+    Promise.all([api.clientsList(), api.companiesList()])
+      .then(([c, co]) => {
+        if (alive) {
+          setItems(c);
+          setCompanies(co);
+        }
       })
       .catch(() => {
         if (alive) setError("Could not load clients.");
@@ -50,11 +56,17 @@ export function ClientsPage() {
     setItems(d);
   }
 
+  const companyOptions = useMemo(
+    () => companies.map((c: any) => ({ id: c.id, label: c.name, disabled: c.active === false })),
+    [companies],
+  );
+
   function openCreate() {
     setEditing(null);
     setName("");
     setPhone("");
     setAddress("");
+    setCompanyId("");
     setModalOpen(true);
   }
 
@@ -63,6 +75,7 @@ export function ClientsPage() {
     setName(c.name);
     setPhone(c.phone || "");
     setAddress(c.address || "");
+    setCompanyId(c.companyId || "");
     setModalOpen(true);
   }
 
@@ -70,9 +83,9 @@ export function ClientsPage() {
     setError(null);
     try {
       if (editing) {
-        await api.clientUpdate(editing.id, { name, phone: phone || undefined, address: address || undefined });
+        await api.clientUpdate(editing.id, { name, phone: phone || undefined, address: address || undefined, companyId: companyId || undefined });
       } else {
-        await api.clientCreate({ name, phone: phone || undefined, address: address || undefined });
+        await api.clientCreate({ name, phone: phone || undefined, address: address || undefined, companyId: companyId || undefined });
       }
       setModalOpen(false);
       await refresh();
@@ -117,9 +130,10 @@ export function ClientsPage() {
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
-          <div className="col-span-3">Name</div>
-          <div className="col-span-3">Phone</div>
-          <div className="col-span-4">Address</div>
+          <div className="col-span-2">Name</div>
+          <div className="col-span-2">Phone</div>
+          <div className="col-span-3">Address</div>
+          <div className="col-span-3">Company</div>
           <div className="col-span-2">Status</div>
         </div>
         <div className="divide-y divide-slate-100">
@@ -134,17 +148,23 @@ export function ClientsPage() {
               title="Right-click to deactivate/reactivate"
             >
               <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
-                <div className="md:col-span-3">
+                <div className="md:col-span-2">
                   <div className="text-slate-600 md:hidden">Name</div>
                   <div className="font-medium">{c.name}</div>
                 </div>
-                <div className="md:col-span-3">
+                <div className="md:col-span-2">
                   <div className="text-slate-600 md:hidden">Phone</div>
                   <div className="text-slate-700">{c.phone || "—"}</div>
                 </div>
-                <div className="md:col-span-4">
+                <div className="md:col-span-3">
                   <div className="text-slate-600 md:hidden">Address</div>
                   <div className="text-slate-700">{c.address || "—"}</div>
+                </div>
+                <div className="md:col-span-3">
+                  <div className="text-slate-600 md:hidden">Company</div>
+                  <div className="text-slate-700">
+                    {c.companyId ? companies.find((co) => co.id === c.companyId)?.name || c.companyId : "—"}
+                  </div>
                 </div>
                 <div className="md:col-span-2">
                   <div className="text-slate-600 md:hidden">Status</div>
@@ -195,6 +215,13 @@ export function ClientsPage() {
           <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
           <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+          <AutocompleteSelect
+            label="Company"
+            placeholder="Select company..."
+            options={[{ id: "", label: "None" }, ...companyOptions]}
+            valueId={companyId}
+            onChangeId={setCompanyId}
+          />
           <div className="flex gap-2">
             <Button onClick={submit} disabled={!name.trim()}>
               Save

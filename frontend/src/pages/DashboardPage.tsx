@@ -14,7 +14,7 @@ export function DashboardPage() {
       driverId: string;
       clientId: string | null;
       companyId: string;
-      vehicleType?: "SUV" | "Sedan" | null;
+      vehicleType?: "SUV" | "Sedan" | "Economy" | null;
       cnf?: string;
       flightNumber?: string;
       // Free-text (e.g., greeter name / instructions). Empty/undefined means no meet & greet.
@@ -50,7 +50,7 @@ export function DashboardPage() {
   const [filterCnfQuery, setFilterCnfQuery] = useState("");
   const [filterFlightNumberQuery, setFilterFlightNumberQuery] = useState("");
   const [filterMeetGreet, setFilterMeetGreet] = useState<"" | "yes" | "no">("");
-  const [filterVehicleType, setFilterVehicleType] = useState<"" | "SUV" | "Sedan">("");
+  const [filterVehicleType, setFilterVehicleType] = useState<"" | "SUV" | "Sedan" | "Economy">("");
 
   useEffect(() => {
     let alive = true;
@@ -420,6 +420,7 @@ export function DashboardPage() {
               <option value="">All</option>
               <option value="SUV">SUV</option>
               <option value="Sedan">Sedan</option>
+              <option value="Economy">Economy</option>
             </select>
           </label>
           <label className="block md:col-span-2">
