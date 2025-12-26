@@ -71,10 +71,10 @@ export const api = {
   driverSetActive: (id: string, active: boolean) =>
     request(`/drivers/${id}/active`, { method: "PATCH", body: JSON.stringify({ active }) }),
 
-  clientsList: () => request<Array<{ id: string; name: string; phone?: string; address?: string; active: boolean }>>("/clients"),
-  clientCreate: (data: { name: string; phone?: string; address?: string }) =>
+  clientsList: () => request<Array<{ id: string; name: string; phone?: string; address?: string; companyId?: string; active: boolean }>>("/clients"),
+  clientCreate: (data: { name: string; phone?: string; address?: string; companyId?: string }) =>
     request("/clients", { method: "POST", body: JSON.stringify(data) }),
-  clientUpdate: (id: string, data: { name: string; phone?: string; address?: string }) =>
+  clientUpdate: (id: string, data: { name: string; phone?: string; address?: string; companyId?: string }) =>
     request(`/clients/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   clientDelete: (id: string) => request(`/clients/${id}`, { method: "DELETE" }),
   clientSetActive: (id: string, active: boolean) =>
@@ -103,7 +103,7 @@ export const api = {
         driverId: string;
         clientId: string | null;
         companyId: string;
-        vehicleType?: "SUV" | "Sedan" | null;
+        vehicleType?: "SUV" | "Sedan" | "Economy" | null;
         cnf?: string;
         flightNumber?: string;
         // Free-text (e.g., greeter name / instructions). Empty/undefined means no meet & greet.
@@ -113,6 +113,7 @@ export const api = {
         endAt: string;
         origin: string;
         destination: string;
+        stop?: string;
         miles: number;
         durationMinutes: number;
         price: number;
@@ -125,7 +126,7 @@ export const api = {
     clientId?: string;
     clientName?: string;
     companyId: string;
-    vehicleType?: "SUV" | "Sedan" | null;
+    vehicleType?: "SUV" | "Sedan" | "Economy" | null;
     cnf?: string;
     flightNumber?: string;
     meetGreet?: string;
@@ -134,12 +135,34 @@ export const api = {
     endAt: string;
     origin: string;
     destination: string;
+    stop?: string;
     miles: number;
     durationMinutes: number;
     price: number;
     received?: boolean;
     notes?: string;
   }) => request("/trips", { method: "POST", body: JSON.stringify(data) }),
+  tripUpdate: (id: string, data: {
+    driverId: string;
+    clientId?: string;
+    clientName?: string;
+    companyId: string;
+    vehicleType?: "SUV" | "Sedan" | "Economy" | null;
+    cnf?: string;
+    flightNumber?: string;
+    meetGreet?: string;
+    clientPhone?: string;
+    startAt: string;
+    endAt: string;
+    origin: string;
+    destination: string;
+    stop?: string;
+    miles: number;
+    durationMinutes: number;
+    price: number;
+    received?: boolean;
+    notes?: string;
+  }) => request(`/trips/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   tripSetReceived: (id: string, received: boolean) =>
     request(`/trips/${id}/received`, { method: "PATCH", body: JSON.stringify({ received }) }),
   tripDelete: (id: string) => request(`/trips/${id}`, { method: "DELETE" }),
