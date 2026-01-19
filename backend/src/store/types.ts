@@ -42,7 +42,7 @@ export interface Trip {
   driverId: string;
   clientId: string | null;
   companyId: string;
-  vehicleType?: "SUV" | "Sedan" | "Economy" | null;
+  vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
   cnf?: string;
   flightNumber?: string;
   // Free-text (e.g., greeter name / instructions). Empty/undefined means no meet & greet.

@@ -14,7 +14,7 @@ export function DashboardPage() {
       driverId: string;
       clientId: string | null;
       companyId: string;
-      vehicleType?: "SUV" | "Sedan" | "Economy" | null;
+      vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
       cnf?: string;
       flightNumber?: string;
       // Free-text (e.g., greeter name / instructions). Empty/undefined means no meet & greet.
@@ -46,11 +46,12 @@ export function DashboardPage() {
   const [filterTo, setFilterTo] = useState("");
   const [filterClientQuery, setFilterClientQuery] = useState("");
   const [filterReceived, setFilterReceived] = useState<"" | "received" | "not_received">("");
+  const [filterDriverId, setFilterDriverId] = useState("");
   const [filterCompanyId, setFilterCompanyId] = useState("");
   const [filterCnfQuery, setFilterCnfQuery] = useState("");
   const [filterFlightNumberQuery, setFilterFlightNumberQuery] = useState("");
   const [filterMeetGreet, setFilterMeetGreet] = useState<"" | "yes" | "no">("");
-  const [filterVehicleType, setFilterVehicleType] = useState<"" | "SUV" | "Sedan" | "Economy">("");
+  const [filterVehicleType, setFilterVehicleType] = useState<"" | "SUV" | "Sedan" | "Economy" | "First Class">("");
 
   useEffect(() => {
     let alive = true;
@@ -109,6 +110,10 @@ export function DashboardPage() {
     () => [{ id: "", label: "All companies" }, ...companies.map((c) => ({ id: c.id, label: c.name, disabled: !c.active }))],
     [companies],
   );
+  const driverOptions = useMemo(
+    () => [{ id: "", label: "All drivers" }, ...drivers.map((d) => ({ id: d.id, label: d.name, disabled: !d.active }))],
+    [drivers],
+  );
 
   const filteredTrips = useMemo(() => {
     const from = parseUsDateOnly(filterFrom);
@@ -134,6 +139,7 @@ export function DashboardPage() {
         const v = (t.flightNumber || "").toLowerCase();
         if (!v.includes(qFlight)) return false;
       }
+      if (filterDriverId && t.driverId !== filterDriverId) return false;
       if (filterCompanyId && t.companyId !== filterCompanyId) return false;
       if (filterVehicleType && (t.vehicleType || "") !== filterVehicleType) return false;
       if (filterReceived === "received" && !t.received) return false;
@@ -152,6 +158,7 @@ export function DashboardPage() {
     filterFlightNumberQuery,
     filterMeetGreet,
     filterVehicleType,
+    filterDriverId,
     filterCompanyId,
     filterReceived,
     clientById,
@@ -180,6 +187,7 @@ export function DashboardPage() {
 
     const clientLabel = filterClientQuery.trim() ? filterClientQuery.trim() : "All";
     const companyLabel = filterCompanyId ? companyById.get(filterCompanyId) || filterCompanyId : "All";
+    const driverLabel = filterDriverId ? driverById.get(filterDriverId) || filterDriverId : "All";
     const receivedLabel =
       filterReceived === "received" ? "Paid" : filterReceived === "not_received" ? "Unpaid" : "All";
     const periodLabel = filterWeek
@@ -193,7 +201,11 @@ export function DashboardPage() {
     doc.setFontSize(14);
     doc.text(title, 40, 40);
     doc.setFontSize(10);
-    doc.text(`Period: ${periodLabel} | Client: ${clientLabel} | Company: ${companyLabel} | Payment: ${receivedLabel}`, 40, 60);
+    doc.text(
+      `Period: ${periodLabel} | Client: ${clientLabel} | Driver: ${driverLabel} | Company: ${companyLabel} | Payment: ${receivedLabel}`,
+      40,
+      60,
+    );
 
     // NOTE: keep ASCII-friendly headers to avoid font encoding issues in jsPDF default fonts
     const head = [[
@@ -299,6 +311,7 @@ export function DashboardPage() {
               setFilterFrom("");
               setFilterTo("");
               setFilterClientQuery("");
+              setFilterDriverId("");
               setFilterReceived("");
               setFilterCompanyId("");
               setFilterCnfQuery("");
@@ -374,7 +387,7 @@ export function DashboardPage() {
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-6">
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
             <Input
               label="Client"
               placeholder="Filter by client..."
@@ -382,7 +395,16 @@ export function DashboardPage() {
               onChange={(e) => setFilterClientQuery(e.target.value)}
             />
           </div>
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
+            <AutocompleteSelect
+              label="Driver"
+              placeholder="Filter by driver..."
+              options={driverOptions}
+              valueId={filterDriverId}
+              onChangeId={setFilterDriverId}
+            />
+          </div>
+          <div className="md:col-span-2">
             <AutocompleteSelect
               label="Company"
               placeholder="Filter by company..."
@@ -421,6 +443,7 @@ export function DashboardPage() {
               <option value="SUV">SUV</option>
               <option value="Sedan">Sedan</option>
               <option value="Economy">Economy</option>
+              <option value="First Class">First Class</option>
             </select>
           </label>
           <label className="block md:col-span-2">

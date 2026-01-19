@@ -13,7 +13,7 @@ type Trip = {
   driverId: string;
   clientId: string | null;
   companyId: string;
-  vehicleType?: "SUV" | "Sedan" | "Economy" | null;
+  vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
   cnf?: string;
   flightNumber?: string;
   // Free-text (e.g., greeter name / instructions). Empty/undefined means no meet & greet.
@@ -51,11 +51,12 @@ export function TripsPage() {
   const [filterTo, setFilterTo] = useState("");
   const [filterClientQuery, setFilterClientQuery] = useState("");
   const [filterReceived, setFilterReceived] = useState<"" | "received" | "not_received">("");
+  const [filterDriverId, setFilterDriverId] = useState("");
   const [filterCompanyId, setFilterCompanyId] = useState("");
   const [filterCnfQuery, setFilterCnfQuery] = useState("");
   const [filterFlightNumberQuery, setFilterFlightNumberQuery] = useState("");
   const [filterMeetGreet, setFilterMeetGreet] = useState<"" | "yes" | "no">("");
-  const [filterVehicleType, setFilterVehicleType] = useState<"" | "SUV" | "Sedan" | "Economy">("");
+  const [filterVehicleType, setFilterVehicleType] = useState<"" | "SUV" | "Sedan" | "Economy" | "First Class">("");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
@@ -73,7 +74,7 @@ export function TripsPage() {
   const [stop, setStop] = useState("");
   const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
-  const [vehicleType, setVehicleType] = useState<"SUV" | "Sedan" | "Economy" | "">("");
+  const [vehicleType, setVehicleType] = useState<"SUV" | "Sedan" | "Economy" | "First Class" | "">("");
   const [received, setReceived] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTrip, setDetailsTrip] = useState<Trip | null>(null);
@@ -132,6 +133,10 @@ export function TripsPage() {
   const driverById = useMemo(() => new Map(drivers.map((d) => [d.id, d.name])), [drivers]);
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c.name])), [companies]);
+  const driverOptions = useMemo(
+    () => drivers.map((d: any) => ({ id: d.id, label: d.name, disabled: d.active === false })),
+    [drivers],
+  );
   const companyOptions = useMemo(
     () => companies.map((c: any) => ({ id: c.id, label: c.name, disabled: c.active === false })),
     [companies],
@@ -145,6 +150,8 @@ export function TripsPage() {
     () => [{ id: "", label: "All companies" }, ...companyOptions],
     [companyOptions],
   );
+
+  const filterDriverOptions = useMemo(() => [{ id: "", label: "All drivers" }, ...driverOptions], [driverOptions]);
 
   const filteredTrips = useMemo(() => {
     const from = parseUsDateOnly(filterFrom);
@@ -170,6 +177,7 @@ export function TripsPage() {
         const v = (t.flightNumber || "").toLowerCase();
         if (!v.includes(qFlight)) return false;
       }
+      if (filterDriverId && t.driverId !== filterDriverId) return false;
       if (filterCompanyId && t.companyId !== filterCompanyId) return false;
       if (filterVehicleType && (t.vehicleType || "") !== filterVehicleType) return false;
       if (filterReceived === "received" && !t.received) return false;
@@ -188,6 +196,7 @@ export function TripsPage() {
     filterFlightNumberQuery,
     filterMeetGreet,
     filterVehicleType,
+    filterDriverId,
     filterCompanyId,
     filterReceived,
     clientById,
@@ -331,12 +340,13 @@ export function TripsPage() {
               setFilterFrom("");
               setFilterTo("");
               setFilterClientQuery("");
+              setFilterDriverId("");
               setFilterCompanyId("");
               setFilterReceived("");
               setFilterCnfQuery("");
               setFilterFlightNumberQuery("");
               setFilterMeetGreet("");
-            setFilterVehicleType("");
+              setFilterVehicleType("");
             }}
           >
             Clear filters
@@ -403,7 +413,16 @@ export function TripsPage() {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-8">
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-10">
+          <div className="md:col-span-2">
+            <AutocompleteSelect
+              label="Driver"
+              placeholder="Filter by driver..."
+              options={filterDriverOptions}
+              valueId={filterDriverId}
+              onChangeId={setFilterDriverId}
+            />
+          </div>
           <div className="md:col-span-2">
             <Input
               label="CNF"
@@ -431,6 +450,7 @@ export function TripsPage() {
               <option value="SUV">SUV</option>
               <option value="Sedan">Sedan</option>
               <option value="Economy">Economy</option>
+              <option value="First Class">First Class</option>
             </select>
           </label>
           <label className="block md:col-span-2">
@@ -599,6 +619,15 @@ export function TripsPage() {
                   onChange={(e) => setVehicleType(e.target.checked ? "Economy" : "")}
                 />
                 Economy
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+                  checked={vehicleType === "First Class"}
+                  onChange={(e) => setVehicleType(e.target.checked ? "First Class" : "")}
+                />
+                First Class
               </label>
             </div>
           </div>
@@ -796,8 +825,8 @@ function exportTripPdf(
     ["Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—"],
     ["Meet & Greet", meetGreet],
     ["Pickup Address", trip.origin],
-    ["Dropoff Address", trip.destination],
     ["Stop", trip.stop ? String(trip.stop) : "—"],
+    ["Dropoff Address", trip.destination],
     ["Amount", `$ ${trip.price.toFixed(2)}`],
   ];
 

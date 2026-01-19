@@ -13,7 +13,7 @@ const tripSchema = z.object({
   clientName: z.string().optional(),
   clientPhone: z.string().optional(),
   companyId: z.string(),
-  vehicleType: z.enum(["SUV", "Sedan", "Economy"]).nullable().optional(),
+  vehicleType: z.enum(["SUV", "Sedan", "Economy", "First Class"]).nullable().optional(),
   cnf: z.string().optional(),
   flightNumber: z.string().optional(),
   meetGreet: z.string().optional(),
