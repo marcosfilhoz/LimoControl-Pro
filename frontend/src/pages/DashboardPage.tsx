@@ -41,7 +41,7 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [page, setPage] = useState<"summary" | "hourly-analysis" | "report-trips" | "report-cnf">("summary");
+  const [page, setPage] = useState<"summary" | "hourly-analysis" | "report-trips" | "report-cnf" | "top-drivers" | "top-companies" | "top-clients" | "vehicle-analysis">("summary");
   const [expandedCnfDays, setExpandedCnfDays] = useState<Set<string>>(new Set());
 
   // filters
@@ -446,6 +446,151 @@ export function DashboardPage() {
     return tripsWithHours;
   }, [filteredTrips, driverById, clientById, companyById]);
 
+  const topDrivers = useMemo(() => {
+    const driverStats = new Map<
+      string,
+      { driverId: string; name: string; tripCount: number; totalRevenue: number; paidRevenue: number; unpaidRevenue: number }
+    >();
+
+    for (const trip of filteredTrips) {
+      const driverId = trip.driverId;
+      const driverName = driverById.get(driverId) || driverId;
+
+      if (!driverStats.has(driverId)) {
+        driverStats.set(driverId, {
+          driverId,
+          name: driverName,
+          tripCount: 0,
+          totalRevenue: 0,
+          paidRevenue: 0,
+          unpaidRevenue: 0,
+        });
+      }
+
+      const stats = driverStats.get(driverId)!;
+      stats.tripCount += 1;
+      stats.totalRevenue += trip.price;
+      if (trip.received) {
+        stats.paidRevenue += trip.price;
+      } else {
+        stats.unpaidRevenue += trip.price;
+      }
+    }
+
+    return Array.from(driverStats.values())
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 50); // Top 50
+  }, [filteredTrips, driverById]);
+
+  const topCompanies = useMemo(() => {
+    const companyStats = new Map<
+      string,
+      { companyId: string; name: string; tripCount: number; totalRevenue: number; paidRevenue: number; unpaidRevenue: number }
+    >();
+
+    for (const trip of filteredTrips) {
+      const companyId = trip.companyId;
+      const companyName = companyById.get(companyId) || companyId;
+
+      if (!companyStats.has(companyId)) {
+        companyStats.set(companyId, {
+          companyId,
+          name: companyName,
+          tripCount: 0,
+          totalRevenue: 0,
+          paidRevenue: 0,
+          unpaidRevenue: 0,
+        });
+      }
+
+      const stats = companyStats.get(companyId)!;
+      stats.tripCount += 1;
+      stats.totalRevenue += trip.price;
+      if (trip.received) {
+        stats.paidRevenue += trip.price;
+      } else {
+        stats.unpaidRevenue += trip.price;
+      }
+    }
+
+    return Array.from(companyStats.values())
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 50); // Top 50
+  }, [filteredTrips, companyById]);
+
+  const topClients = useMemo(() => {
+    const clientStats = new Map<
+      string,
+      { clientId: string; name: string; tripCount: number; totalRevenue: number; paidRevenue: number; unpaidRevenue: number }
+    >();
+
+    for (const trip of filteredTrips) {
+      if (!trip.clientId) continue;
+
+      const clientId = trip.clientId;
+      const clientName = clientById.get(clientId) || clientId;
+
+      if (!clientStats.has(clientId)) {
+        clientStats.set(clientId, {
+          clientId,
+          name: clientName,
+          tripCount: 0,
+          totalRevenue: 0,
+          paidRevenue: 0,
+          unpaidRevenue: 0,
+        });
+      }
+
+      const stats = clientStats.get(clientId)!;
+      stats.tripCount += 1;
+      stats.totalRevenue += trip.price;
+      if (trip.received) {
+        stats.paidRevenue += trip.price;
+      } else {
+        stats.unpaidRevenue += trip.price;
+      }
+    }
+
+    return Array.from(clientStats.values())
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 50); // Top 50
+  }, [filteredTrips, clientById]);
+
+  const vehicleAnalysis = useMemo(() => {
+    const vehicleStats = new Map<
+      string,
+      { vehicleType: string; tripCount: number; totalRevenue: number; paidRevenue: number; unpaidRevenue: number; avgPrice: number }
+    >();
+
+    for (const trip of filteredTrips) {
+      const vehicleType = trip.vehicleType || "Not Specified";
+
+      if (!vehicleStats.has(vehicleType)) {
+        vehicleStats.set(vehicleType, {
+          vehicleType,
+          tripCount: 0,
+          totalRevenue: 0,
+          paidRevenue: 0,
+          unpaidRevenue: 0,
+          avgPrice: 0,
+        });
+      }
+
+      const stats = vehicleStats.get(vehicleType)!;
+      stats.tripCount += 1;
+      stats.totalRevenue += trip.price;
+      if (trip.received) {
+        stats.paidRevenue += trip.price;
+      } else {
+        stats.unpaidRevenue += trip.price;
+      }
+    }
+
+    return Array.from(vehicleStats.values()).map((stats) => ({
+      ...stats,
+      avgPrice: stats.tripCount > 0 ? stats.totalRevenue / stats.tripCount : 0,
+    }));
+  }, [filteredTrips]);
 
   return (
     <div className="space-y-4">
@@ -468,6 +613,18 @@ export function DashboardPage() {
           </Button>
           <Button variant={page === "report-cnf" ? "primary" : "ghost"} onClick={() => setPage("report-cnf")}>
             CNF Report
+          </Button>
+          <Button variant={page === "top-drivers" ? "primary" : "ghost"} onClick={() => setPage("top-drivers")}>
+            TOP Drivers
+          </Button>
+          <Button variant={page === "top-companies" ? "primary" : "ghost"} onClick={() => setPage("top-companies")}>
+            TOP Companies
+          </Button>
+          <Button variant={page === "top-clients" ? "primary" : "ghost"} onClick={() => setPage("top-clients")}>
+            TOP Clients
+          </Button>
+          <Button variant={page === "vehicle-analysis" ? "primary" : "ghost"} onClick={() => setPage("vehicle-analysis")}>
+            Vehicle Analysis
           </Button>
           <Button
             variant="ghost"
@@ -929,6 +1086,244 @@ export function DashboardPage() {
               {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
               {!loading && cnfReportRows.length === 0 ? (
                 <div className="p-3 text-sm text-slate-600">No CNF rows for this filter.</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {page === "top-drivers" ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">TOP Drivers Analysis</div>
+              <div className="text-sm text-slate-600">
+                Ranked by total revenue. Showing top <span className="font-medium text-slate-900">{topDrivers.length}</span> drivers
+              </div>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div className="col-span-1">Rank</div>
+              <div className="col-span-3">Driver</div>
+              <div className="col-span-2 text-right">Trips</div>
+              <div className="col-span-2 text-right">Total Revenue</div>
+              <div className="col-span-2 text-right">Paid Revenue</div>
+              <div className="col-span-2 text-right">Unpaid Revenue</div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {topDrivers.map((driver, index) => (
+                <div key={driver.driverId} className="p-3">
+                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                    <div className="md:col-span-1">
+                      <div className="text-slate-600 md:hidden">Rank</div>
+                      <div className="font-semibold text-slate-800">#{index + 1}</div>
+                    </div>
+                    <div className="md:col-span-3">
+                      <div className="text-slate-600 md:hidden">Driver</div>
+                      <div className="font-medium truncate">{driver.name}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Trips</div>
+                      <div className="font-medium">{driver.tripCount}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Total Revenue</div>
+                      <div className="font-semibold text-slate-900">$ {driver.totalRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Paid Revenue</div>
+                      <div className="text-emerald-700">$ {driver.paidRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Unpaid Revenue</div>
+                      <div className="text-amber-700">$ {driver.unpaidRevenue.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+              {!loading && topDrivers.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No drivers found for this filter.</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {page === "top-companies" ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">TOP Companies Analysis</div>
+              <div className="text-sm text-slate-600">
+                Ranked by total revenue. Showing top <span className="font-medium text-slate-900">{topCompanies.length}</span> companies
+              </div>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div className="col-span-1">Rank</div>
+              <div className="col-span-3">Company</div>
+              <div className="col-span-2 text-right">Trips</div>
+              <div className="col-span-2 text-right">Total Revenue</div>
+              <div className="col-span-2 text-right">Paid Revenue</div>
+              <div className="col-span-2 text-right">Unpaid Revenue</div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {topCompanies.map((company, index) => (
+                <div key={company.companyId} className="p-3">
+                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                    <div className="md:col-span-1">
+                      <div className="text-slate-600 md:hidden">Rank</div>
+                      <div className="font-semibold text-slate-800">#{index + 1}</div>
+                    </div>
+                    <div className="md:col-span-3">
+                      <div className="text-slate-600 md:hidden">Company</div>
+                      <div className="font-medium truncate">{company.name}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Trips</div>
+                      <div className="font-medium">{company.tripCount}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Total Revenue</div>
+                      <div className="font-semibold text-slate-900">$ {company.totalRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Paid Revenue</div>
+                      <div className="text-emerald-700">$ {company.paidRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Unpaid Revenue</div>
+                      <div className="text-amber-700">$ {company.unpaidRevenue.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+              {!loading && topCompanies.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No companies found for this filter.</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {page === "top-clients" ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">TOP Clients Analysis</div>
+              <div className="text-sm text-slate-600">
+                Ranked by total revenue. Showing top <span className="font-medium text-slate-900">{topClients.length}</span> clients
+              </div>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div className="col-span-1">Rank</div>
+              <div className="col-span-3">Client</div>
+              <div className="col-span-2 text-right">Trips</div>
+              <div className="col-span-2 text-right">Total Revenue</div>
+              <div className="col-span-2 text-right">Paid Revenue</div>
+              <div className="col-span-2 text-right">Unpaid Revenue</div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {topClients.map((client, index) => (
+                <div key={client.clientId} className="p-3">
+                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                    <div className="md:col-span-1">
+                      <div className="text-slate-600 md:hidden">Rank</div>
+                      <div className="font-semibold text-slate-800">#{index + 1}</div>
+                    </div>
+                    <div className="md:col-span-3">
+                      <div className="text-slate-600 md:hidden">Client</div>
+                      <div className="font-medium truncate">{client.name}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Trips</div>
+                      <div className="font-medium">{client.tripCount}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Total Revenue</div>
+                      <div className="font-semibold text-slate-900">$ {client.totalRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Paid Revenue</div>
+                      <div className="text-emerald-700">$ {client.paidRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Unpaid Revenue</div>
+                      <div className="text-amber-700">$ {client.unpaidRevenue.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+              {!loading && topClients.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No clients found for this filter.</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {page === "vehicle-analysis" ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">Vehicle Type Analysis</div>
+              <div className="text-sm text-slate-600">
+                Analysis by vehicle type. Showing <span className="font-medium text-slate-900">{vehicleAnalysis.length}</span> vehicle types
+              </div>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div className="col-span-3">Vehicle Type</div>
+              <div className="col-span-2 text-right">Trips</div>
+              <div className="col-span-2 text-right">Total Revenue</div>
+              <div className="col-span-2 text-right">Avg Price</div>
+              <div className="col-span-1 text-right">Paid</div>
+              <div className="col-span-2 text-right">Unpaid</div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {vehicleAnalysis
+                .sort((a, b) => b.totalRevenue - a.totalRevenue)
+                .map((vehicle) => (
+                  <div key={vehicle.vehicleType} className="p-3">
+                    <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                      <div className="md:col-span-3">
+                        <div className="text-slate-600 md:hidden">Vehicle Type</div>
+                        <div className="font-medium">{vehicle.vehicleType}</div>
+                      </div>
+                      <div className="md:col-span-2 md:text-right">
+                        <div className="text-slate-600 md:hidden">Trips</div>
+                        <div className="font-medium">{vehicle.tripCount}</div>
+                      </div>
+                      <div className="md:col-span-2 md:text-right">
+                        <div className="text-slate-600 md:hidden">Total Revenue</div>
+                        <div className="font-semibold text-slate-900">$ {vehicle.totalRevenue.toFixed(2)}</div>
+                      </div>
+                      <div className="md:col-span-2 md:text-right">
+                        <div className="text-slate-600 md:hidden">Average Price</div>
+                        <div className="text-slate-700">$ {vehicle.avgPrice.toFixed(2)}</div>
+                      </div>
+                      <div className="md:col-span-1 md:text-right">
+                        <div className="text-slate-600 md:hidden">Paid Revenue</div>
+                        <div className="text-emerald-700">$ {vehicle.paidRevenue.toFixed(2)}</div>
+                      </div>
+                      <div className="md:col-span-2 md:text-right">
+                        <div className="text-slate-600 md:hidden">Unpaid Revenue</div>
+                        <div className="text-amber-700">$ {vehicle.unpaidRevenue.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+              {!loading && vehicleAnalysis.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No vehicle data found for this filter.</div>
               ) : null}
             </div>
           </div>
