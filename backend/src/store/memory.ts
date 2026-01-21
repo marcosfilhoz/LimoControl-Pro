@@ -37,6 +37,7 @@ export const trips: Trip[] = [
     driverId: "d_1",
     clientId: "c_1",
     companyId: "co_1",
+    tripType: "transfer",
     vehicleType: "Sedan",
     cnf: "CNF-DEMO",
     flightNumber: "AA123",

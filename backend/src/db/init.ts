@@ -71,6 +71,9 @@ export async function initDbIfNeeded() {
       driver_id text not null references drivers(id) on delete restrict,
       client_id text references clients(id) on delete restrict,
       company_id text not null references companies(id) on delete restrict,
+      trip_type text not null default 'transfer',
+      hourly_start_time text,
+      hourly_end_time text,
       vehicle_type text,
       cnf text,
       flight_number text,
@@ -129,6 +132,42 @@ export async function initDbIfNeeded() {
     where phone is null and contact is not null and nullif(trim(contact),'') is not null;
   `);
 
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='trip_type') then
+        null;
+      else
+        alter table trips add column trip_type text not null default 'transfer';
+        raise notice 'Added trip_type column to trips table';
+      end if;
+    end $$;
+  `);
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='hourly_start_time') then
+        null;
+      else
+        alter table trips add column hourly_start_time text;
+        raise notice 'Added hourly_start_time column to trips table';
+      end if;
+    end $$;
+  `);
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='hourly_end_time') then
+        null;
+      else
+        alter table trips add column hourly_end_time text;
+        raise notice 'Added hourly_end_time column to trips table';
+      end if;
+    end $$;
+  `);
+  await exec(`
+    update trips set trip_type='transfer' where trip_type is null;
+  `);
   await exec(`
     do $$
     begin

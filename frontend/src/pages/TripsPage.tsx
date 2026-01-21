@@ -13,6 +13,9 @@ type Trip = {
   driverId: string;
   clientId: string | null;
   companyId: string;
+  tripType?: "transfer" | "hourly";
+  hourlyStartTime?: string;
+  hourlyEndTime?: string;
   vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
   cnf?: string;
   flightNumber?: string;
@@ -220,6 +223,9 @@ export function TripsPage() {
     const defaultClient = defaultClientId ? clients.find((c) => c.id === defaultClientId) : null;
     setClientPhone(defaultClient?.phone ? String(defaultClient.phone) : "");
     setCompanyId(companies.find((c: any) => c.active !== false)?.id || companies[0]?.id || "");
+    setTripType("transfer");
+    setHourlyStartTime("");
+    setHourlyEndTime("");
     const dt = toLocalInputValue(new Date());
     setStartAt(dt);
     setEndAt(dt);
@@ -244,6 +250,15 @@ export function TripsPage() {
     setClientId(trip.clientId || "");
     setClientPhone(trip.clientPhone ? String(trip.clientPhone) : "");
     setCompanyId(trip.companyId);
+    const resolvedTripType = trip.tripType === "hourly" ? "hourly" : "transfer";
+    setTripType(resolvedTripType);
+    if (resolvedTripType === "hourly") {
+      setHourlyStartTime(trip.hourlyStartTime || formatTimeInput(trip.startAt));
+      setHourlyEndTime(trip.hourlyEndTime || formatTimeInput(trip.endAt));
+    } else {
+      setHourlyStartTime("");
+      setHourlyEndTime("");
+    }
     const startAtValue = toLocalInputValue(new Date(trip.startAt));
     setStartAt(startAtValue);
     setEndAt(startAtValue); // Keep endAt equal to startAt for backend compatibility
@@ -640,6 +655,30 @@ export function TripsPage() {
             onChangeId={setCompanyId}
           />
 
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-sm font-medium text-slate-700">Trip type</div>
+            <div className="mt-2 flex flex-wrap gap-4 text-sm text-slate-800">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+                  checked={tripType === "transfer"}
+                  onChange={(e) => setTripType(e.target.checked ? "transfer" : "hourly")}
+                />
+                Transfer
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+                  checked={tripType === "hourly"}
+                  onChange={(e) => setTripType(e.target.checked ? "hourly" : "transfer")}
+                />
+                Hourly
+              </label>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-3">
             <Input
               label="Trip date/time"
@@ -649,6 +688,23 @@ export function TripsPage() {
                 setStartAt(e.target.value);
                 setEndAt(e.target.value);
               }}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Input
+              label="Hora inicial"
+              type="time"
+              value={hourlyStartTime}
+              disabled={tripType !== "hourly"}
+              onChange={(e) => setHourlyStartTime(e.target.value)}
+            />
+            <Input
+              label="Hora final"
+              type="time"
+              value={hourlyEndTime}
+              disabled={tripType !== "hourly"}
+              onChange={(e) => setHourlyEndTime(e.target.value)}
             />
           </div>
 
@@ -700,7 +756,15 @@ export function TripsPage() {
           <div className="flex gap-2">
             <Button
               onClick={submit}
-              disabled={saving || !driverId || !clientId || !companyId || !origin.trim() || !destination.trim()}
+              disabled={
+                saving ||
+                !driverId ||
+                !clientId ||
+                !companyId ||
+                !origin.trim() ||
+                !destination.trim() ||
+                (tripType === "hourly" && (!hourlyStartTime || !hourlyEndTime))
+              }
             >
               {saving ? "Saving..." : "Save"}
             </Button>
@@ -717,6 +781,15 @@ export function TripsPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Detail label="Date" value={`${formatDate(detailsTrip.startAt)} ${formatTime(detailsTrip.startAt)}`} />
               <Detail label="Payment" value={detailsTrip.received ? "Paid" : "Unpaid"} />
+              <Detail label="Service" value={detailsTrip.tripType === "hourly" ? "Hourly" : "Transfer"} />
+              {detailsTrip.tripType === "hourly" ? (
+                <Detail
+                  label="Hourly time"
+                  value={`${detailsTrip.hourlyStartTime || formatTimeInput(detailsTrip.startAt)} - ${
+                    detailsTrip.hourlyEndTime || formatTimeInput(detailsTrip.endAt)
+                  }`}
+                />
+              ) : null}
               <Detail label="Driver" value={driverById.get(detailsTrip.driverId) || detailsTrip.driverId} />
               <Detail label="Client" value={detailsTrip.clientId ? clientById.get(detailsTrip.clientId) || detailsTrip.clientId : "—"} />
               <Detail label="Phone Number" value={detailsTrip.clientPhone ? String(detailsTrip.clientPhone) : "—"} />
@@ -802,6 +875,11 @@ function exportTripPdf(
   const phone = trip.clientPhone ? String(trip.clientPhone) : "—";
   const status = trip.received ? "Paid" : "Unpaid";
   const cnf = trip.cnf ? String(trip.cnf) : "—";
+  const service = trip.tripType === "hourly" ? "Hourly" : "Transfer";
+  const hourlyTime =
+    trip.tripType === "hourly"
+      ? `${trip.hourlyStartTime || formatTimeInput(trip.startAt)} - ${trip.hourlyEndTime || formatTimeInput(trip.endAt)}`
+      : "—";
 
   // Title
   doc.setFontSize(18);
@@ -817,6 +895,8 @@ function exportTripPdf(
   const tableData = [
     ["Date/Time", `${formatDate(trip.startAt)} ${formatTime(trip.startAt)}`],
     ["Payment Status", status],
+    ["Service Type", service],
+    ["Hourly Time", hourlyTime],
     ["Driver", driver],
     ["Client", client],
     ["Phone Number", phone],
@@ -900,6 +980,15 @@ function formatTime(iso: string) {
   }
 }
 
+function formatTimeInput(iso: string) {
+  try {
+    const d = new Date(iso);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  } catch {
+    return "";
+  }
+}
+
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
@@ -962,6 +1051,12 @@ function fromLocalInputValue(v: string) {
   // interpret as local time; server stores as ISO
   const d = new Date(v);
   return d.toISOString();
+}
+
+function mergeDateAndTime(dateTimeLocal: string, time: string) {
+  const datePart = dateTimeLocal.split("T")[0];
+  if (!datePart || !time) return fromLocalInputValue(dateTimeLocal);
+  return fromLocalInputValue(`${datePart}T${time}`);
 }
 
 function startOfDay(d: Date) {

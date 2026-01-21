@@ -103,6 +103,9 @@ export const api = {
         driverId: string;
         clientId: string | null;
         companyId: string;
+        tripType?: "transfer" | "hourly";
+        hourlyStartTime?: string;
+        hourlyEndTime?: string;
         vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
         cnf?: string;
         flightNumber?: string;
@@ -126,6 +129,9 @@ export const api = {
     clientId?: string;
     clientName?: string;
     companyId: string;
+    tripType?: "transfer" | "hourly";
+    hourlyStartTime?: string;
+    hourlyEndTime?: string;
     vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
     cnf?: string;
     flightNumber?: string;
@@ -147,6 +153,9 @@ export const api = {
     clientId?: string;
     clientName?: string;
     companyId: string;
+    tripType?: "transfer" | "hourly";
+    hourlyStartTime?: string;
+    hourlyEndTime?: string;
     vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
     cnf?: string;
     flightNumber?: string;

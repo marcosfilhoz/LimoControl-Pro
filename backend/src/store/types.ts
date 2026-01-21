@@ -42,6 +42,9 @@ export interface Trip {
   driverId: string;
   clientId: string | null;
   companyId: string;
+  tripType?: "transfer" | "hourly";
+  hourlyStartTime?: string;
+  hourlyEndTime?: string;
   vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
   cnf?: string;
   flightNumber?: string;
