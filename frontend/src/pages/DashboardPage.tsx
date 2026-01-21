@@ -42,6 +42,11 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(false);
 
   const [page, setPage] = useState<"summary" | "hourly-analysis" | "report-trips" | "report-cnf" | "report-company">("summary");
+<<<<<<< HEAD
+  const [expandedCnfDays, setExpandedCnfDays] = useState<Set<string>>(new Set());
+  const [expandedCompanyDays, setExpandedCompanyDays] = useState<Set<string>>(new Set());
+=======
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
 
   // filters
   const [filterWeek, setFilterWeek] = useState("");
@@ -186,10 +191,8 @@ export function DashboardPage() {
   }, [filteredTrips, driverById, clientById, companyById]);
 
   const cnfReportRows = useMemo(() => {
-    return filteredTrips
+    const tripsWithCnf = filteredTrips
       .filter((t) => typeof t.cnf === "string" && t.cnf.trim())
-      .slice()
-      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
       .map((t) => ({
         id: t.id,
         date: formatDate(t.startAt),
@@ -200,6 +203,26 @@ export function DashboardPage() {
         company: companyById.get(t.companyId) || t.companyId,
         received: t.received ? "Paid" : "Unpaid",
         value: t.price,
+        startAt: t.startAt,
+      }));
+
+    const groupedByDate = new Map<string, typeof tripsWithCnf>();
+    for (const trip of tripsWithCnf) {
+      const existing = groupedByDate.get(trip.date);
+      if (existing) {
+        existing.push(trip);
+      } else {
+        groupedByDate.set(trip.date, [trip]);
+      }
+    }
+
+    return Array.from(groupedByDate.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, trips]) => ({
+        date,
+        count: trips.length,
+        totalRevenue: trips.reduce((sum, t) => sum + t.value, 0),
+        trips: trips.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
       }));
   }, [filteredTrips, driverById, clientById, companyById]);
 
@@ -317,16 +340,21 @@ export function DashboardPage() {
     );
 
     const head = [["Date", "Time", "CNF", "Driver", "Client", "Company", "Paid", "Amount ($)"]];
-    const body = cnfReportRows.map((r) => [
-      r.date,
-      r.time,
-      r.cnf,
-      r.driver,
-      r.client,
-      r.company,
-      r.received,
-      r.value.toFixed(2),
-    ]);
+    const body: string[][] = [];
+    for (const dayGroup of cnfReportRows) {
+      for (const trip of dayGroup.trips) {
+        body.push([
+          trip.date,
+          trip.time,
+          trip.cnf,
+          trip.driver,
+          trip.client,
+          trip.company,
+          trip.received,
+          trip.value.toFixed(2),
+        ]);
+      }
+    }
 
     autoTable(doc, {
       head,
@@ -352,7 +380,7 @@ export function DashboardPage() {
       },
     });
 
-    const totalValue = cnfReportRows.reduce((acc, r) => acc + r.value, 0);
+    const totalValue = cnfReportRows.reduce((acc, r) => acc + r.totalRevenue, 0);
     const finalY = (doc as any).lastAutoTable?.finalY || 80;
     doc.setFontSize(10);
     doc.text(`Total: $ ${totalValue.toFixed(2)}`, 40, finalY + 24);
@@ -387,8 +415,22 @@ export function DashboardPage() {
       60,
     );
 
-    const head = [["Date", "CNF", "Trips", "Total Revenue ($)"]];
-    const body = companyReportRows.map((r) => [r.date, r.cnf, String(r.count), r.totalRevenue.toFixed(2)]);
+    const head = [["Date", "Time", "CNF", "Driver", "Client", "Company", "Paid", "Amount ($)"]];
+    const body: string[][] = [];
+    for (const dayGroup of companyReportRows) {
+      for (const trip of dayGroup.trips) {
+        body.push([
+          trip.date,
+          trip.time,
+          trip.cnf,
+          trip.driver,
+          trip.client,
+          trip.company,
+          trip.received,
+          trip.value.toFixed(2),
+        ]);
+      }
+    }
 
     autoTable(doc, {
       head,
@@ -398,10 +440,14 @@ export function DashboardPage() {
       styles: { fontSize: 9, cellPadding: 4, overflow: "linebreak" },
       headStyles: { fillColor: [15, 23, 42] },
       columnStyles: {
-        0: { cellWidth: 100 },
-        1: { cellWidth: 150 },
-        2: { halign: "right", cellWidth: 80 },
-        3: { halign: "right", cellWidth: 120 },
+        0: { cellWidth: 55 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 80 },
+        3: { cellWidth: 85 },
+        4: { cellWidth: 85 },
+        5: { cellWidth: 95 },
+        6: { cellWidth: 55 },
+        7: { halign: "right", cellWidth: 55 },
       },
       didDrawPage: (data) => {
         const pageCount = doc.getNumberOfPages();
@@ -496,39 +542,40 @@ export function DashboardPage() {
   }, [filteredTrips]);
 
   const companyReportRows = useMemo(() => {
-    const grouped = new Map<string, { date: string; cnf: string; count: number; totalRevenue: number }>();
-    for (const t of filteredTrips) {
-      if (typeof t.cnf === "string" && t.cnf.trim()) {
-        const date = formatDate(t.startAt);
-        const key = `${date}|${t.cnf}`;
-        const existing = grouped.get(key);
-        if (existing) {
-          existing.count += 1;
-          existing.totalRevenue += t.price;
-        } else {
-          grouped.set(key, {
-            date,
-            cnf: t.cnf,
-            count: 1,
-            totalRevenue: t.price,
-          });
-        }
+    const tripsWithCnf = filteredTrips
+      .filter((t) => typeof t.cnf === "string" && t.cnf.trim())
+      .map((t) => ({
+        id: t.id,
+        date: formatDate(t.startAt),
+        time: formatTime(t.startAt),
+        cnf: t.cnf ? String(t.cnf) : "",
+        driver: driverById.get(t.driverId) || t.driverId,
+        client: t.clientId ? clientById.get(t.clientId) || t.clientId : "—",
+        company: companyById.get(t.companyId) || t.companyId,
+        received: t.received ? "Paid" : "Unpaid",
+        value: t.price,
+        startAt: t.startAt,
+      }));
+
+    const groupedByDate = new Map<string, typeof tripsWithCnf>();
+    for (const trip of tripsWithCnf) {
+      const existing = groupedByDate.get(trip.date);
+      if (existing) {
+        existing.push(trip);
+      } else {
+        groupedByDate.set(trip.date, [trip]);
       }
     }
-    return Array.from(grouped.values())
-      .sort((a, b) => {
-        const dateCompare = a.date.localeCompare(b.date);
-        if (dateCompare !== 0) return dateCompare;
-        return a.cnf.localeCompare(b.cnf);
-      })
-      .map((r, idx) => ({
-        id: `company-${idx}`,
-        date: r.date,
-        cnf: r.cnf,
-        count: r.count,
-        totalRevenue: r.totalRevenue,
+
+    return Array.from(groupedByDate.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, trips]) => ({
+        date,
+        count: trips.length,
+        totalRevenue: trips.reduce((sum, t) => sum + t.value, 0),
+        trips: trips.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
       }));
-  }, [filteredTrips]);
+  }, [filteredTrips, driverById, clientById, companyById]);
 
   return (
     <div className="space-y-4">
@@ -723,9 +770,12 @@ export function DashboardPage() {
             <Card title="Paid" value={`${summary.receivedCount} • $ ${summary.receivedRevenue.toFixed(2)}`} />
             <Card title="Unpaid" value={`${summary.notReceivedCount} • $ ${summary.notReceivedRevenue.toFixed(2)}`} />
           </div>
+<<<<<<< HEAD
+=======
           <div className="grid grid-cols-1 gap-3">
             <BarList title="Trips by Hour" items={hourlyBreakdown} />
           </div>
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
         </div>
       ) : null}
 
@@ -855,7 +905,11 @@ export function DashboardPage() {
             <div>
               <div className="text-sm font-semibold text-slate-900">Report 2 - CNF by Day</div>
               <div className="text-sm text-slate-600">
+<<<<<<< HEAD
+                Days: <span className="font-medium text-slate-900">{cnfReportRows.length}</span>
+=======
                 Rows: <span className="font-medium text-slate-900">{cnfReportRows.length}</span>
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
               </div>
             </div>
             <Button onClick={exportCnfPdf} disabled={cnfReportRows.length === 0}>
@@ -864,6 +918,54 @@ export function DashboardPage() {
           </div>
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+<<<<<<< HEAD
+              <div className="col-span-1"></div>
+              <div className="col-span-3">Date</div>
+              <div className="col-span-2 text-right">Trips</div>
+              <div className="col-span-2 text-right">Total Revenue</div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {cnfReportRows.map((dayGroup) => {
+                const isExpanded = expandedCnfDays.has(dayGroup.date);
+                return (
+                  <div key={dayGroup.date}>
+                    <div
+                      className="p-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                      onClick={() => {
+                        const newSet = new Set(expandedCnfDays);
+                        if (isExpanded) {
+                          newSet.delete(dayGroup.date);
+                        } else {
+                          newSet.add(dayGroup.date);
+                        }
+                        setExpandedCnfDays(newSet);
+                      }}
+                    >
+                      <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                        <div className="md:col-span-1">
+                          <svg
+                            className={`w-5 h-5 transform transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                        <div className="md:col-span-3">
+                          <div className="text-slate-600 md:hidden">Date</div>
+                          <div className="font-medium">{dayGroup.date}</div>
+                        </div>
+                        <div className="md:col-span-2 md:text-right">
+                          <div className="text-slate-600 md:hidden">Trips</div>
+                          <div className="font-medium">{dayGroup.count}</div>
+                        </div>
+                        <div className="md:col-span-2 md:text-right">
+                          <div className="text-slate-600 md:hidden">Total Revenue</div>
+                          <div className="font-medium">$ {dayGroup.totalRevenue.toFixed(2)}</div>
+                        </div>
+                      </div>
+=======
               <div className="col-span-2">Date/Time</div>
               <div className="col-span-2">CNF</div>
               <div className="col-span-2">Driver</div>
@@ -912,10 +1014,73 @@ export function DashboardPage() {
                     <div className="md:col-span-1 md:text-right">
                       <div className="text-slate-600 md:hidden">Amount</div>
                       <div className="font-medium">$ {r.value.toFixed(2)}</div>
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
                     </div>
+                    {isExpanded && (
+                      <div className="bg-slate-50 border-t border-slate-200">
+                        <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-100 p-3 text-xs font-medium md:grid">
+                          <div className="col-span-2">Time</div>
+                          <div className="col-span-2">CNF</div>
+                          <div className="col-span-2">Driver</div>
+                          <div className="col-span-2">Client</div>
+                          <div className="col-span-2">Company</div>
+                          <div className="col-span-1">Paid</div>
+                          <div className="col-span-1 text-right">Amount</div>
+                        </div>
+                        <div className="divide-y divide-slate-200">
+                          {dayGroup.trips.map((trip) => (
+                            <div key={trip.id} className="p-3 pl-8">
+                              <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">Time</div>
+                                  <div className="text-xs text-slate-600">{trip.time}</div>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">CNF</div>
+                                  <div className="truncate">{trip.cnf}</div>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">Driver</div>
+                                  <div className="truncate">{trip.driver}</div>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">Client</div>
+                                  <div className="truncate">{trip.client}</div>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">Company</div>
+                                  <div className="truncate">{trip.company}</div>
+                                </div>
+                                <div className="md:col-span-1">
+                                  <div className="text-slate-600 md:hidden">Paid</div>
+                                  <span
+                                    className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                                      trip.received === "Paid"
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : "bg-amber-50 text-amber-700"
+                                    }`}
+                                  >
+                                    {trip.received}
+                                  </span>
+                                </div>
+                                <div className="md:col-span-1 md:text-right">
+                                  <div className="text-slate-600 md:hidden">Amount</div>
+                                  <div className="font-medium">$ {trip.value.toFixed(2)}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+<<<<<<< HEAD
+                );
+              })}
+=======
                 </div>
               ))}
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
               {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
               {!loading && cnfReportRows.length === 0 ? (
                 <div className="p-3 text-sm text-slate-600">No CNF rows for this filter.</div>
@@ -931,7 +1096,11 @@ export function DashboardPage() {
             <div>
               <div className="text-sm font-semibold text-slate-900">Report - Company</div>
               <div className="text-sm text-slate-600">
+<<<<<<< HEAD
+                Days: <span className="font-medium text-slate-900">{companyReportRows.length}</span>
+=======
                 Rows: <span className="font-medium text-slate-900">{companyReportRows.length}</span>
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
               </div>
             </div>
             <Button onClick={exportCompanyPdf} disabled={companyReportRows.length === 0}>
@@ -940,12 +1109,59 @@ export function DashboardPage() {
           </div>
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+<<<<<<< HEAD
+              <div className="col-span-1"></div>
+              <div className="col-span-3">Date</div>
+=======
               <div className="col-span-4">Date</div>
               <div className="col-span-4">CNF</div>
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
               <div className="col-span-2 text-right">Trips</div>
               <div className="col-span-2 text-right">Total Revenue</div>
             </div>
             <div className="divide-y divide-slate-100">
+<<<<<<< HEAD
+              {companyReportRows.map((dayGroup) => {
+                const isExpanded = expandedCompanyDays.has(dayGroup.date);
+                return (
+                  <div key={dayGroup.date}>
+                    <div
+                      className="p-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                      onClick={() => {
+                        const newSet = new Set(expandedCompanyDays);
+                        if (isExpanded) {
+                          newSet.delete(dayGroup.date);
+                        } else {
+                          newSet.add(dayGroup.date);
+                        }
+                        setExpandedCompanyDays(newSet);
+                      }}
+                    >
+                      <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                        <div className="md:col-span-1">
+                          <svg
+                            className={`w-5 h-5 transform transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                        <div className="md:col-span-3">
+                          <div className="text-slate-600 md:hidden">Date</div>
+                          <div className="font-medium">{dayGroup.date}</div>
+                        </div>
+                        <div className="md:col-span-2 md:text-right">
+                          <div className="text-slate-600 md:hidden">Trips</div>
+                          <div className="font-medium">{dayGroup.count}</div>
+                        </div>
+                        <div className="md:col-span-2 md:text-right">
+                          <div className="text-slate-600 md:hidden">Total Revenue</div>
+                          <div className="font-medium">$ {dayGroup.totalRevenue.toFixed(2)}</div>
+                        </div>
+                      </div>
+=======
               {companyReportRows.map((r) => (
                 <div key={r.id} className="p-3">
                   <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
@@ -964,10 +1180,73 @@ export function DashboardPage() {
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Total Revenue</div>
                       <div className="font-medium">$ {r.totalRevenue.toFixed(2)}</div>
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
                     </div>
+                    {isExpanded && (
+                      <div className="bg-slate-50 border-t border-slate-200">
+                        <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-100 p-3 text-xs font-medium md:grid">
+                          <div className="col-span-2">Time</div>
+                          <div className="col-span-2">CNF</div>
+                          <div className="col-span-2">Driver</div>
+                          <div className="col-span-2">Client</div>
+                          <div className="col-span-2">Company</div>
+                          <div className="col-span-1">Paid</div>
+                          <div className="col-span-1 text-right">Amount</div>
+                        </div>
+                        <div className="divide-y divide-slate-200">
+                          {dayGroup.trips.map((trip) => (
+                            <div key={trip.id} className="p-3 pl-8">
+                              <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">Time</div>
+                                  <div className="text-xs text-slate-600">{trip.time}</div>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">CNF</div>
+                                  <div className="truncate">{trip.cnf}</div>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">Driver</div>
+                                  <div className="truncate">{trip.driver}</div>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">Client</div>
+                                  <div className="truncate">{trip.client}</div>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <div className="text-slate-600 md:hidden">Company</div>
+                                  <div className="truncate">{trip.company}</div>
+                                </div>
+                                <div className="md:col-span-1">
+                                  <div className="text-slate-600 md:hidden">Paid</div>
+                                  <span
+                                    className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                                      trip.received === "Paid"
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : "bg-amber-50 text-amber-700"
+                                    }`}
+                                  >
+                                    {trip.received}
+                                  </span>
+                                </div>
+                                <div className="md:col-span-1 md:text-right">
+                                  <div className="text-slate-600 md:hidden">Amount</div>
+                                  <div className="font-medium">$ {trip.value.toFixed(2)}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+<<<<<<< HEAD
+                );
+              })}
+=======
                 </div>
               ))}
+>>>>>>> f71f286904dbb73ecf1661dd8745672e73d919fe
               {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
               {!loading && companyReportRows.length === 0 ? (
                 <div className="p-3 text-sm text-slate-600">No company report rows for this filter.</div>
