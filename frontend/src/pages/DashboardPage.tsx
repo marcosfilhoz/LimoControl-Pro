@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AutocompleteSelect } from "../components/AutocompleteSelect";
+import { BarList } from "../components/BarList";
 import { Button } from "../components/Button";
 import { DateFilterInput } from "../components/DateFilterInput";
 import { Input } from "../components/Input";
@@ -14,6 +15,9 @@ export function DashboardPage() {
       driverId: string;
       clientId: string | null;
       companyId: string;
+      tripType?: "transfer" | "hourly";
+      hourlyStartTime?: string;
+      hourlyEndTime?: string;
       vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
       cnf?: string;
       flightNumber?: string;
@@ -181,6 +185,24 @@ export function DashboardPage() {
       }));
   }, [filteredTrips, driverById, clientById, companyById]);
 
+  const cnfReportRows = useMemo(() => {
+    return filteredTrips
+      .filter((t) => typeof t.cnf === "string" && t.cnf.trim())
+      .slice()
+      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+      .map((t) => ({
+        id: t.id,
+        date: formatDate(t.startAt),
+        time: formatTime(t.startAt),
+        cnf: t.cnf ? String(t.cnf) : "",
+        driver: driverById.get(t.driverId) || t.driverId,
+        client: t.clientId ? clientById.get(t.clientId) || t.clientId : "—",
+        company: companyById.get(t.companyId) || t.companyId,
+        received: t.received ? "Paid" : "Unpaid",
+        value: t.price,
+      }));
+  }, [filteredTrips, driverById, clientById, companyById]);
+
   function exportPdf() {
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
     const title = "Trips Report";
@@ -268,6 +290,136 @@ export function DashboardPage() {
     doc.save(fileName);
   }
 
+  function exportCnfPdf() {
+    const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+    const title = "Report 2 - CNF by Day";
+
+    const clientLabel = filterClientQuery.trim() ? filterClientQuery.trim() : "All";
+    const companyLabel = filterCompanyId ? companyById.get(filterCompanyId) || filterCompanyId : "All";
+    const driverLabel = filterDriverId ? driverById.get(filterDriverId) || filterDriverId : "All";
+    const receivedLabel =
+      filterReceived === "received" ? "Paid" : filterReceived === "not_received" ? "Unpaid" : "All";
+    const periodLabel = filterWeek
+      ? weekLabel(filterWeek, filterFrom, filterTo)
+      : filterMonth
+        ? monthLabel(filterMonth, filterFrom, filterTo)
+        : filterFrom || filterTo
+          ? `${filterFrom || "—"} to ${filterTo || "—"}`
+          : "All";
+
+    doc.setFontSize(14);
+    doc.text(title, 40, 40);
+    doc.setFontSize(9.5);
+    doc.text(
+      `Period: ${periodLabel} | Client: ${clientLabel} | Driver: ${driverLabel} | Company: ${companyLabel} | Payment: ${receivedLabel}`,
+      40,
+      60,
+    );
+
+    const head = [["Date", "Time", "CNF", "Driver", "Client", "Company", "Paid", "Amount ($)"]];
+    const body = cnfReportRows.map((r) => [
+      r.date,
+      r.time,
+      r.cnf,
+      r.driver,
+      r.client,
+      r.company,
+      r.received,
+      r.value.toFixed(2),
+    ]);
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: 80,
+      margin: { left: 40, right: 40 },
+      styles: { fontSize: 8.5, cellPadding: 4, overflow: "linebreak" },
+      headStyles: { fillColor: [15, 23, 42] },
+      columnStyles: {
+        0: { cellWidth: 55 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 80 },
+        3: { cellWidth: 85 },
+        4: { cellWidth: 85 },
+        5: { cellWidth: 95 },
+        6: { cellWidth: 55 },
+        7: { halign: "right", cellWidth: 55 },
+      },
+      didDrawPage: (data) => {
+        const pageCount = doc.getNumberOfPages();
+        doc.setFontSize(9);
+        doc.text(`Page ${data.pageNumber} of ${pageCount}`, doc.internal.pageSize.getWidth() - 90, doc.internal.pageSize.getHeight() - 20);
+      },
+    });
+
+    const totalValue = cnfReportRows.reduce((acc, r) => acc + r.value, 0);
+    const finalY = (doc as any).lastAutoTable?.finalY || 80;
+    doc.setFontSize(10);
+    doc.text(`Total: $ ${totalValue.toFixed(2)}`, 40, finalY + 24);
+
+    const fileName = `cnf_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+    doc.save(fileName);
+  }
+
+  function exportCompanyPdf() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const title = "Report - Company";
+
+    const clientLabel = filterClientQuery.trim() ? filterClientQuery.trim() : "All";
+    const companyLabel = filterCompanyId ? companyById.get(filterCompanyId) || filterCompanyId : "All";
+    const driverLabel = filterDriverId ? driverById.get(filterDriverId) || filterDriverId : "All";
+    const receivedLabel =
+      filterReceived === "received" ? "Paid" : filterReceived === "not_received" ? "Unpaid" : "All";
+    const periodLabel = filterWeek
+      ? weekLabel(filterWeek, filterFrom, filterTo)
+      : filterMonth
+        ? monthLabel(filterMonth, filterFrom, filterTo)
+        : filterFrom || filterTo
+          ? `${filterFrom || "—"} to ${filterTo || "—"}`
+          : "All";
+
+    doc.setFontSize(14);
+    doc.text(title, 40, 40);
+    doc.setFontSize(10);
+    doc.text(
+      `Period: ${periodLabel} | Client: ${clientLabel} | Driver: ${driverLabel} | Company: ${companyLabel} | Payment: ${receivedLabel}`,
+      40,
+      60,
+    );
+
+    const head = [["Date", "CNF", "Trips", "Total Revenue ($)"]];
+    const body = companyReportRows.map((r) => [r.date, r.cnf, String(r.count), r.totalRevenue.toFixed(2)]);
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: 80,
+      margin: { left: 40, right: 40 },
+      styles: { fontSize: 9, cellPadding: 4, overflow: "linebreak" },
+      headStyles: { fillColor: [15, 23, 42] },
+      columnStyles: {
+        0: { cellWidth: 100 },
+        1: { cellWidth: 150 },
+        2: { halign: "right", cellWidth: 80 },
+        3: { halign: "right", cellWidth: 120 },
+      },
+      didDrawPage: (data) => {
+        const pageCount = doc.getNumberOfPages();
+        doc.setFontSize(9);
+        doc.text(`Page ${data.pageNumber} of ${pageCount}`, doc.internal.pageSize.getWidth() - 90, doc.internal.pageSize.getHeight() - 20);
+      },
+    });
+
+    const totalTrips = companyReportRows.reduce((acc, r) => acc + r.count, 0);
+    const totalRevenue = companyReportRows.reduce((acc, r) => acc + r.totalRevenue, 0);
+    const finalY = (doc as any).lastAutoTable?.finalY || 80;
+    doc.setFontSize(10);
+    doc.text(`Total Trips: ${totalTrips} | Total Revenue: $ ${totalRevenue.toFixed(2)}`, 40, finalY + 24);
+
+    const fileName = `company_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+    doc.save(fileName);
+  }
+
   const summary = useMemo(() => {
     const totalTrips = filteredTrips.length;
     const totalRevenue = filteredTrips.reduce((acc, t) => acc + t.price, 0);
@@ -285,6 +437,97 @@ export function DashboardPage() {
       receivedRevenue,
       notReceivedRevenue,
     };
+  }, [filteredTrips]);
+
+  const hourlyBreakdown = useMemo(() => {
+    const hours = Array.from({ length: 24 }, (_, h) => ({
+      hour: h,
+      count: 0,
+      revenue: 0,
+    }));
+    for (const t of filteredTrips) {
+      const h = new Date(t.startAt).getHours();
+      if (Number.isFinite(h) && h >= 0 && h < 24) {
+        hours[h].count += 1;
+        hours[h].revenue += t.price;
+      }
+    }
+    return hours.map((h) => ({
+      label: `${String(h.hour).padStart(2, "0")}:00`,
+      value: h.count,
+      valueLabel: `${h.count} • $ ${h.revenue.toFixed(2)}`,
+    }));
+  }, [filteredTrips]);
+
+  const hourlyAnalysis = useMemo(() => {
+    const hours = Array.from({ length: 24 }, (_, h) => ({
+      hour: h,
+      count: 0,
+      revenue: 0,
+      receivedRevenue: 0,
+      notReceivedRevenue: 0,
+      receivedCount: 0,
+      notReceivedCount: 0,
+    }));
+    for (const t of filteredTrips) {
+      const h = new Date(t.startAt).getHours();
+      if (Number.isFinite(h) && h >= 0 && h < 24) {
+        hours[h].count += 1;
+        hours[h].revenue += t.price;
+        if (t.received) {
+          hours[h].receivedCount += 1;
+          hours[h].receivedRevenue += t.price;
+        } else {
+          hours[h].notReceivedCount += 1;
+          hours[h].notReceivedRevenue += t.price;
+        }
+      }
+    }
+    return hours.filter((h) => h.count > 0).map((h) => ({
+      hour: h.hour,
+      label: `${String(h.hour).padStart(2, "0")}:00`,
+      count: h.count,
+      revenue: h.revenue,
+      receivedCount: h.receivedCount,
+      receivedRevenue: h.receivedRevenue,
+      notReceivedCount: h.notReceivedCount,
+      notReceivedRevenue: h.notReceivedRevenue,
+    }));
+  }, [filteredTrips]);
+
+  const companyReportRows = useMemo(() => {
+    const grouped = new Map<string, { date: string; cnf: string; count: number; totalRevenue: number }>();
+    for (const t of filteredTrips) {
+      if (typeof t.cnf === "string" && t.cnf.trim()) {
+        const date = formatDate(t.startAt);
+        const key = `${date}|${t.cnf}`;
+        const existing = grouped.get(key);
+        if (existing) {
+          existing.count += 1;
+          existing.totalRevenue += t.price;
+        } else {
+          grouped.set(key, {
+            date,
+            cnf: t.cnf,
+            count: 1,
+            totalRevenue: t.price,
+          });
+        }
+      }
+    }
+    return Array.from(grouped.values())
+      .sort((a, b) => {
+        const dateCompare = a.date.localeCompare(b.date);
+        if (dateCompare !== 0) return dateCompare;
+        return a.cnf.localeCompare(b.cnf);
+      })
+      .map((r, idx) => ({
+        id: `company-${idx}`,
+        date: r.date,
+        cnf: r.cnf,
+        count: r.count,
+        totalRevenue: r.totalRevenue,
+      }));
   }, [filteredTrips]);
 
   return (
@@ -464,83 +707,255 @@ export function DashboardPage() {
       {loading ? <div className="text-sm text-slate-600">Loading...</div> : null}
 
       {page === "summary" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Card title="Trips" value={String(summary.totalTrips)} />
-          <Card title="Revenue" value={`$ ${summary.totalRevenue.toFixed(2)}`} />
-          <Card title="Paid" value={`${summary.receivedCount} • $ ${summary.receivedRevenue.toFixed(2)}`} />
-          <Card title="Unpaid" value={`${summary.notReceivedCount} • $ ${summary.notReceivedRevenue.toFixed(2)}`} />
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Card title="Trips" value={String(summary.totalTrips)} />
+            <Card title="Revenue" value={`$ ${summary.totalRevenue.toFixed(2)}`} />
+            <Card title="Paid" value={`${summary.receivedCount} • $ ${summary.receivedRevenue.toFixed(2)}`} />
+            <Card title="Unpaid" value={`${summary.notReceivedCount} • $ ${summary.notReceivedRevenue.toFixed(2)}`} />
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            <BarList title="Trips by Hour" items={hourlyBreakdown} />
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-sm font-semibold">Hourly Analysis Dashboard</div>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[600px] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="px-3 py-2 text-left font-medium text-slate-700">Hour</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Trips</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Revenue</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Paid</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Paid Revenue</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Unpaid</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Unpaid Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hourlyAnalysis.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-3 py-4 text-center text-slate-600">
+                          No data.
+                        </td>
+                      </tr>
+                    ) : (
+                      hourlyAnalysis.map((h) => (
+                        <tr key={h.hour} className="border-b border-slate-100">
+                          <td className="px-3 py-2 font-medium text-slate-800">{h.label}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">{h.count}</td>
+                          <td className="px-3 py-2 text-right font-medium text-slate-800">$ {h.revenue.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">{h.receivedCount}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">$ {h.receivedRevenue.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">{h.notReceivedCount}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">$ {h.notReceivedRevenue.toFixed(2)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
       {page === "reports" ? (
-        <div className="space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-slate-600">
-              Rows: <span className="font-medium text-slate-900">{reportRows.length}</span>
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-slate-600">
+                Rows: <span className="font-medium text-slate-900">{reportRows.length}</span>
+              </div>
+              <Button onClick={exportPdf} disabled={reportRows.length === 0}>
+                Export PDF
+              </Button>
             </div>
-            <Button onClick={exportPdf} disabled={reportRows.length === 0}>
-              Export PDF
-            </Button>
-          </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
-              <div className="col-span-2">Date/Time</div>
-              <div className="col-span-2">Driver</div>
-              <div className="col-span-2">Client</div>
-              <div className="col-span-2">Company</div>
-              <div className="col-span-2">Origin → Destination</div>
-              <div className="col-span-1">Paid</div>
-              <div className="col-span-1 text-right">Amount</div>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {reportRows.map((r) => (
-                <div key={r.id} className="p-3">
-                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
-                    <div className="md:col-span-2">
-                      <div className="text-slate-600 md:hidden">Date/Time</div>
-                      <div className="font-medium">{r.date}</div>
-                      <div className="text-xs text-slate-600">{r.time}</div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <div className="text-slate-600 md:hidden">Driver</div>
-                      <div className="truncate">{r.driver}</div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <div className="text-slate-600 md:hidden">Client</div>
-                      <div className="truncate">{r.client}</div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <div className="text-slate-600 md:hidden">Company</div>
-                      <div className="truncate">{r.company}</div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <div className="text-slate-600 md:hidden">Origin → Destination</div>
-                      <div className="truncate">{r.route}</div>
-                    </div>
-                    <div className="md:col-span-1">
-                      <div className="text-slate-600 md:hidden">Paid</div>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
-                          r.received === "Paid"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-amber-50 text-amber-700"
-                        }`}
-                      >
-                        {r.received}
-                      </span>
-                    </div>
-                    <div className="md:col-span-1 md:text-right">
-                      <div className="text-slate-600 md:hidden">Amount</div>
-                      <div className="font-medium">$ {r.value.toFixed(2)}</div>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+                <div className="col-span-2">Date/Time</div>
+                <div className="col-span-2">Driver</div>
+                <div className="col-span-2">Client</div>
+                <div className="col-span-2">Company</div>
+                <div className="col-span-2">Origin → Destination</div>
+                <div className="col-span-1">Paid</div>
+                <div className="col-span-1 text-right">Amount</div>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {reportRows.map((r) => (
+                  <div key={r.id} className="p-3">
+                    <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Date/Time</div>
+                        <div className="font-medium">{r.date}</div>
+                        <div className="text-xs text-slate-600">{r.time}</div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Driver</div>
+                        <div className="truncate">{r.driver}</div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Client</div>
+                        <div className="truncate">{r.client}</div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Company</div>
+                        <div className="truncate">{r.company}</div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Origin → Destination</div>
+                        <div className="truncate">{r.route}</div>
+                      </div>
+                      <div className="md:col-span-1">
+                        <div className="text-slate-600 md:hidden">Paid</div>
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                            r.received === "Paid"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {r.received}
+                        </span>
+                      </div>
+                      <div className="md:col-span-1 md:text-right">
+                        <div className="text-slate-600 md:hidden">Amount</div>
+                        <div className="font-medium">$ {r.value.toFixed(2)}</div>
+                      </div>
                     </div>
                   </div>
+                ))}
+                {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+                {!loading && reportRows.length === 0 ? (
+                  <div className="p-3 text-sm text-slate-600">No trips for this filter.</div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Report 2 - CNF by Day</div>
+                <div className="text-sm text-slate-600">
+                  Rows: <span className="font-medium text-slate-900">{cnfReportRows.length}</span>
                 </div>
-              ))}
-              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
-              {!loading && reportRows.length === 0 ? (
-                <div className="p-3 text-sm text-slate-600">No trips for this filter.</div>
-              ) : null}
+              </div>
+              <Button onClick={exportCnfPdf} disabled={cnfReportRows.length === 0}>
+                Export PDF
+              </Button>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+                <div className="col-span-2">Date/Time</div>
+                <div className="col-span-2">CNF</div>
+                <div className="col-span-2">Driver</div>
+                <div className="col-span-2">Client</div>
+                <div className="col-span-2">Company</div>
+                <div className="col-span-1">Paid</div>
+                <div className="col-span-1 text-right">Amount</div>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {cnfReportRows.map((r) => (
+                  <div key={r.id} className="p-3">
+                    <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Date/Time</div>
+                        <div className="font-medium">{r.date}</div>
+                        <div className="text-xs text-slate-600">{r.time}</div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">CNF</div>
+                        <div className="truncate">{r.cnf}</div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Driver</div>
+                        <div className="truncate">{r.driver}</div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Client</div>
+                        <div className="truncate">{r.client}</div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="text-slate-600 md:hidden">Company</div>
+                        <div className="truncate">{r.company}</div>
+                      </div>
+                      <div className="md:col-span-1">
+                        <div className="text-slate-600 md:hidden">Paid</div>
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                            r.received === "Paid"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {r.received}
+                        </span>
+                      </div>
+                      <div className="md:col-span-1 md:text-right">
+                        <div className="text-slate-600 md:hidden">Amount</div>
+                        <div className="font-medium">$ {r.value.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+                {!loading && cnfReportRows.length === 0 ? (
+                  <div className="p-3 text-sm text-slate-600">No CNF rows for this filter.</div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Report - Company</div>
+                <div className="text-sm text-slate-600">
+                  Rows: <span className="font-medium text-slate-900">{companyReportRows.length}</span>
+                </div>
+              </div>
+              <Button onClick={exportCompanyPdf} disabled={companyReportRows.length === 0}>
+                Export PDF
+              </Button>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+                <div className="col-span-4">Date</div>
+                <div className="col-span-4">CNF</div>
+                <div className="col-span-2 text-right">Trips</div>
+                <div className="col-span-2 text-right">Total Revenue</div>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {companyReportRows.map((r) => (
+                  <div key={r.id} className="p-3">
+                    <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                      <div className="md:col-span-4">
+                        <div className="text-slate-600 md:hidden">Date</div>
+                        <div className="font-medium">{r.date}</div>
+                      </div>
+                      <div className="md:col-span-4">
+                        <div className="text-slate-600 md:hidden">CNF</div>
+                        <div className="truncate">{r.cnf}</div>
+                      </div>
+                      <div className="md:col-span-2 md:text-right">
+                        <div className="text-slate-600 md:hidden">Trips</div>
+                        <div className="font-medium">{r.count}</div>
+                      </div>
+                      <div className="md:col-span-2 md:text-right">
+                        <div className="text-slate-600 md:hidden">Total Revenue</div>
+                        <div className="font-medium">$ {r.totalRevenue.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+                {!loading && companyReportRows.length === 0 ? (
+                  <div className="p-3 text-sm text-slate-600">No company report rows for this filter.</div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
