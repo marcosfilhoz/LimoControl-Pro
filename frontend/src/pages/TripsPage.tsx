@@ -78,6 +78,9 @@ export function TripsPage() {
   const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
   const [vehicleType, setVehicleType] = useState<"SUV" | "Sedan" | "Economy" | "First Class" | "">("");
+  const [tripType, setTripType] = useState<"transfer" | "hourly">("transfer");
+  const [hourlyStartTime, setHourlyStartTime] = useState("");
+  const [hourlyEndTime, setHourlyEndTime] = useState("");
   const [received, setReceived] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTrip, setDetailsTrip] = useState<Trip | null>(null);
