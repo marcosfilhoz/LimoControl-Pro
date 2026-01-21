@@ -41,7 +41,7 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [page, setPage] = useState<"summary" | "reports">("summary");
+  const [page, setPage] = useState<"summary" | "hourly-analysis" | "report-trips" | "report-cnf" | "report-company">("summary");
 
   // filters
   const [filterWeek, setFilterWeek] = useState("");
@@ -543,8 +543,17 @@ export function DashboardPage() {
           <Button variant={page === "summary" ? "primary" : "ghost"} onClick={() => setPage("summary")}>
             Summary
           </Button>
-          <Button variant={page === "reports" ? "primary" : "ghost"} onClick={() => setPage("reports")}>
-            Reports
+          <Button variant={page === "hourly-analysis" ? "primary" : "ghost"} onClick={() => setPage("hourly-analysis")}>
+            Hourly Analysis
+          </Button>
+          <Button variant={page === "report-trips" ? "primary" : "ghost"} onClick={() => setPage("report-trips")}>
+            Trips Report
+          </Button>
+          <Button variant={page === "report-cnf" ? "primary" : "ghost"} onClick={() => setPage("report-cnf")}>
+            CNF Report
+          </Button>
+          <Button variant={page === "report-company" ? "primary" : "ghost"} onClick={() => setPage("report-company")}>
+            Company Report
           </Button>
           <Button
             variant="ghost"
@@ -717,6 +726,11 @@ export function DashboardPage() {
           <div className="grid grid-cols-1 gap-3">
             <BarList title="Trips by Hour" items={hourlyBreakdown} />
           </div>
+        </div>
+      ) : null}
+
+      {page === "hourly-analysis" ? (
+        <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="text-sm font-semibold">Hourly Analysis Dashboard</div>
@@ -761,201 +775,203 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      {page === "reports" ? (
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      {page === "report-trips" ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-600">
+              Rows: <span className="font-medium text-slate-900">{reportRows.length}</span>
+            </div>
+            <Button onClick={exportPdf} disabled={reportRows.length === 0}>
+              Export PDF
+            </Button>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div className="col-span-2">Date/Time</div>
+              <div className="col-span-2">Driver</div>
+              <div className="col-span-2">Client</div>
+              <div className="col-span-2">Company</div>
+              <div className="col-span-2">Origin → Destination</div>
+              <div className="col-span-1">Paid</div>
+              <div className="col-span-1 text-right">Amount</div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {reportRows.map((r) => (
+                <div key={r.id} className="p-3">
+                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Date/Time</div>
+                      <div className="font-medium">{r.date}</div>
+                      <div className="text-xs text-slate-600">{r.time}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Driver</div>
+                      <div className="truncate">{r.driver}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Client</div>
+                      <div className="truncate">{r.client}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Company</div>
+                      <div className="truncate">{r.company}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Origin → Destination</div>
+                      <div className="truncate">{r.route}</div>
+                    </div>
+                    <div className="md:col-span-1">
+                      <div className="text-slate-600 md:hidden">Paid</div>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                          r.received === "Paid"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}
+                      >
+                        {r.received}
+                      </span>
+                    </div>
+                    <div className="md:col-span-1 md:text-right">
+                      <div className="text-slate-600 md:hidden">Amount</div>
+                      <div className="font-medium">$ {r.value.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+              {!loading && reportRows.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No trips for this filter.</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {page === "report-cnf" ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">Report 2 - CNF by Day</div>
               <div className="text-sm text-slate-600">
-                Rows: <span className="font-medium text-slate-900">{reportRows.length}</span>
+                Rows: <span className="font-medium text-slate-900">{cnfReportRows.length}</span>
               </div>
-              <Button onClick={exportPdf} disabled={reportRows.length === 0}>
-                Export PDF
-              </Button>
             </div>
-
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
-                <div className="col-span-2">Date/Time</div>
-                <div className="col-span-2">Driver</div>
-                <div className="col-span-2">Client</div>
-                <div className="col-span-2">Company</div>
-                <div className="col-span-2">Origin → Destination</div>
-                <div className="col-span-1">Paid</div>
-                <div className="col-span-1 text-right">Amount</div>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {reportRows.map((r) => (
-                  <div key={r.id} className="p-3">
-                    <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Date/Time</div>
-                        <div className="font-medium">{r.date}</div>
-                        <div className="text-xs text-slate-600">{r.time}</div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Driver</div>
-                        <div className="truncate">{r.driver}</div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Client</div>
-                        <div className="truncate">{r.client}</div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Company</div>
-                        <div className="truncate">{r.company}</div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Origin → Destination</div>
-                        <div className="truncate">{r.route}</div>
-                      </div>
-                      <div className="md:col-span-1">
-                        <div className="text-slate-600 md:hidden">Paid</div>
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
-                            r.received === "Paid"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-amber-50 text-amber-700"
-                          }`}
-                        >
-                          {r.received}
-                        </span>
-                      </div>
-                      <div className="md:col-span-1 md:text-right">
-                        <div className="text-slate-600 md:hidden">Amount</div>
-                        <div className="font-medium">$ {r.value.toFixed(2)}</div>
-                      </div>
+            <Button onClick={exportCnfPdf} disabled={cnfReportRows.length === 0}>
+              Export PDF
+            </Button>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div className="col-span-2">Date/Time</div>
+              <div className="col-span-2">CNF</div>
+              <div className="col-span-2">Driver</div>
+              <div className="col-span-2">Client</div>
+              <div className="col-span-2">Company</div>
+              <div className="col-span-1">Paid</div>
+              <div className="col-span-1 text-right">Amount</div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {cnfReportRows.map((r) => (
+                <div key={r.id} className="p-3">
+                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Date/Time</div>
+                      <div className="font-medium">{r.date}</div>
+                      <div className="text-xs text-slate-600">{r.time}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">CNF</div>
+                      <div className="truncate">{r.cnf}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Driver</div>
+                      <div className="truncate">{r.driver}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Client</div>
+                      <div className="truncate">{r.client}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Company</div>
+                      <div className="truncate">{r.company}</div>
+                    </div>
+                    <div className="md:col-span-1">
+                      <div className="text-slate-600 md:hidden">Paid</div>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                          r.received === "Paid"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}
+                      >
+                        {r.received}
+                      </span>
+                    </div>
+                    <div className="md:col-span-1 md:text-right">
+                      <div className="text-slate-600 md:hidden">Amount</div>
+                      <div className="font-medium">$ {r.value.toFixed(2)}</div>
                     </div>
                   </div>
-                ))}
-                {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
-                {!loading && reportRows.length === 0 ? (
-                  <div className="p-3 text-sm text-slate-600">No trips for this filter.</div>
-                ) : null}
-              </div>
+                </div>
+              ))}
+              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+              {!loading && cnfReportRows.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No CNF rows for this filter.</div>
+              ) : null}
             </div>
           </div>
+        </div>
+      ) : null}
 
-          <div className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Report 2 - CNF by Day</div>
-                <div className="text-sm text-slate-600">
-                  Rows: <span className="font-medium text-slate-900">{cnfReportRows.length}</span>
-                </div>
-              </div>
-              <Button onClick={exportCnfPdf} disabled={cnfReportRows.length === 0}>
-                Export PDF
-              </Button>
-            </div>
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
-                <div className="col-span-2">Date/Time</div>
-                <div className="col-span-2">CNF</div>
-                <div className="col-span-2">Driver</div>
-                <div className="col-span-2">Client</div>
-                <div className="col-span-2">Company</div>
-                <div className="col-span-1">Paid</div>
-                <div className="col-span-1 text-right">Amount</div>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {cnfReportRows.map((r) => (
-                  <div key={r.id} className="p-3">
-                    <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Date/Time</div>
-                        <div className="font-medium">{r.date}</div>
-                        <div className="text-xs text-slate-600">{r.time}</div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">CNF</div>
-                        <div className="truncate">{r.cnf}</div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Driver</div>
-                        <div className="truncate">{r.driver}</div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Client</div>
-                        <div className="truncate">{r.client}</div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="text-slate-600 md:hidden">Company</div>
-                        <div className="truncate">{r.company}</div>
-                      </div>
-                      <div className="md:col-span-1">
-                        <div className="text-slate-600 md:hidden">Paid</div>
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
-                            r.received === "Paid"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-amber-50 text-amber-700"
-                          }`}
-                        >
-                          {r.received}
-                        </span>
-                      </div>
-                      <div className="md:col-span-1 md:text-right">
-                        <div className="text-slate-600 md:hidden">Amount</div>
-                        <div className="font-medium">$ {r.value.toFixed(2)}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
-                {!loading && cnfReportRows.length === 0 ? (
-                  <div className="p-3 text-sm text-slate-600">No CNF rows for this filter.</div>
-                ) : null}
+      {page === "report-company" ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">Report - Company</div>
+              <div className="text-sm text-slate-600">
+                Rows: <span className="font-medium text-slate-900">{companyReportRows.length}</span>
               </div>
             </div>
+            <Button onClick={exportCompanyPdf} disabled={companyReportRows.length === 0}>
+              Export PDF
+            </Button>
           </div>
-
-          <div className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">Report - Company</div>
-                <div className="text-sm text-slate-600">
-                  Rows: <span className="font-medium text-slate-900">{companyReportRows.length}</span>
-                </div>
-              </div>
-              <Button onClick={exportCompanyPdf} disabled={companyReportRows.length === 0}>
-                Export PDF
-              </Button>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div className="col-span-4">Date</div>
+              <div className="col-span-4">CNF</div>
+              <div className="col-span-2 text-right">Trips</div>
+              <div className="col-span-2 text-right">Total Revenue</div>
             </div>
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
-                <div className="col-span-4">Date</div>
-                <div className="col-span-4">CNF</div>
-                <div className="col-span-2 text-right">Trips</div>
-                <div className="col-span-2 text-right">Total Revenue</div>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {companyReportRows.map((r) => (
-                  <div key={r.id} className="p-3">
-                    <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
-                      <div className="md:col-span-4">
-                        <div className="text-slate-600 md:hidden">Date</div>
-                        <div className="font-medium">{r.date}</div>
-                      </div>
-                      <div className="md:col-span-4">
-                        <div className="text-slate-600 md:hidden">CNF</div>
-                        <div className="truncate">{r.cnf}</div>
-                      </div>
-                      <div className="md:col-span-2 md:text-right">
-                        <div className="text-slate-600 md:hidden">Trips</div>
-                        <div className="font-medium">{r.count}</div>
-                      </div>
-                      <div className="md:col-span-2 md:text-right">
-                        <div className="text-slate-600 md:hidden">Total Revenue</div>
-                        <div className="font-medium">$ {r.totalRevenue.toFixed(2)}</div>
-                      </div>
+            <div className="divide-y divide-slate-100">
+              {companyReportRows.map((r) => (
+                <div key={r.id} className="p-3">
+                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                    <div className="md:col-span-4">
+                      <div className="text-slate-600 md:hidden">Date</div>
+                      <div className="font-medium">{r.date}</div>
+                    </div>
+                    <div className="md:col-span-4">
+                      <div className="text-slate-600 md:hidden">CNF</div>
+                      <div className="truncate">{r.cnf}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Trips</div>
+                      <div className="font-medium">{r.count}</div>
+                    </div>
+                    <div className="md:col-span-2 md:text-right">
+                      <div className="text-slate-600 md:hidden">Total Revenue</div>
+                      <div className="font-medium">$ {r.totalRevenue.toFixed(2)}</div>
                     </div>
                   </div>
-                ))}
-                {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
-                {!loading && companyReportRows.length === 0 ? (
-                  <div className="p-3 text-sm text-slate-600">No company report rows for this filter.</div>
-                ) : null}
-              </div>
+                </div>
+              ))}
+              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+              {!loading && companyReportRows.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No company report rows for this filter.</div>
+              ) : null}
             </div>
           </div>
         </div>
