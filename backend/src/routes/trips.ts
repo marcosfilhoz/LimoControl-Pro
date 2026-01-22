@@ -88,6 +88,11 @@ router.get("/", (req, res) => {
       // Debug: check if there are any trips for this driver at all
       const allTripsForDriver = await store.trips.list({ driverId: filterDriverId });
       console.log(`[Trips] Debug: Total trips for driver ${filterDriverId}: ${allTripsForDriver.length}`);
+      // Also check all trips to see what driverIds exist
+      const allTrips = await store.trips.list({});
+      const uniqueDriverIds = [...new Set(allTrips.map(t => t.driverId))];
+      console.log(`[Trips] Debug: All driverIds in trips:`, uniqueDriverIds);
+      console.log(`[Trips] Debug: Looking for driverId: ${filterDriverId}, exists in trips: ${uniqueDriverIds.includes(filterDriverId)}`);
     }
     return res.json(filtered);
   })().catch((err) => {
