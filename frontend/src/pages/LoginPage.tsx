@@ -24,7 +24,7 @@ export function LoginPage() {
       await login(email, password);
       if (remember) setSavedCreds({ email, password, remember: true });
       else clearSavedCreds();
-      navigate("/dashboard");
+      navigate("/");
     } catch (e: any) {
       // api.ts throws { status, body } when server responds; fetch errors come as TypeError
       if (e?.status === 401) {

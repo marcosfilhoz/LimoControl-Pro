@@ -14,8 +14,7 @@ import { UsersPage } from "./pages/UsersPage";
 import { CompaniesPage } from "./pages/CompaniesPage";
 
 function HomeRedirect() {
-  const { user } = useAuth();
-  return <Navigate to={user?.role === "driver" ? "/rides-funnel" : "/dashboard"} replace />;
+  return <Navigate to="/" replace />;
 }
 
 export function App() {
