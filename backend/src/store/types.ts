@@ -1,4 +1,4 @@
-export type Role = "admin" | "user";
+export type Role = "admin" | "user" | "driver";
 
 export interface User {
   id: string;
@@ -6,6 +6,7 @@ export interface User {
   email: string;
   passwordHash: string;
   role: Role;
+  driverId?: string;
   createdAt: string;
 }
 

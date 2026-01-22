@@ -20,7 +20,7 @@ function toNum(v: any) {
 }
 
 function safeUser(u: User) {
-  return { id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt };
+  return { id: u.id, name: u.name, email: u.email, role: u.role, driverId: u.driverId, createdAt: u.createdAt };
 }
 
 export type TripCreateInput = Omit<Trip, "id" | "createdAt" | "createdByUserId" | "received"> & { received?: boolean };
@@ -36,7 +36,7 @@ export const store = {
         return memUsers.find((u) => u.email.toLowerCase() === e) || null;
       }
       const res = await pool.query(
-        `select id, name, email, password_hash, role, created_at from users where lower(email)=lower($1) limit 1`,
+        `select id, name, email, password_hash, role, driver_id, created_at from users where lower(email)=lower($1) limit 1`,
         [e]
       );
       const r = res.rows[0];
@@ -47,17 +47,18 @@ export const store = {
         email: r.email,
         passwordHash: r.password_hash,
         role: r.role as Role,
+        driverId: r.driver_id ?? undefined,
         createdAt: toIso(r.created_at),
       };
     },
 
     async listSafe() {
       if (!pool) return memUsers.map(safeUser);
-      const res = await pool.query(`select id, name, email, role, created_at from users order by created_at desc`);
-      return res.rows.map((r: any) => ({ id: r.id, name: r.name, email: r.email, role: r.role as Role, createdAt: toIso(r.created_at) }));
+      const res = await pool.query(`select id, name, email, role, driver_id, created_at from users order by created_at desc`);
+      return res.rows.map((r: any) => ({ id: r.id, name: r.name, email: r.email, role: r.role as Role, driverId: r.driver_id ?? undefined, createdAt: toIso(r.created_at) }));
     },
 
-    async create(input: { name: string; email: string; password: string; role: Role }) {
+    async create(input: { name: string; email: string; password: string; role: Role; driverId?: string }) {
       const email = input.email.toLowerCase();
       if (!pool) {
         if (memUsers.some((u) => u.email.toLowerCase() === email)) return { error: "Email already exists" as const };
@@ -67,6 +68,7 @@ export const store = {
           email,
           passwordHash: bcrypt.hashSync(input.password, 8),
           role: input.role,
+          driverId: input.driverId,
           createdAt: nowIso(),
         };
         memUsers.push(u);
@@ -77,27 +79,58 @@ export const store = {
       const id = generateId("u");
       const passwordHash = bcrypt.hashSync(input.password, 8);
       const res = await pool.query(
-        `insert into users (id, name, email, password_hash, role) values ($1,$2,$3,$4,$5) returning id, name, email, role, created_at`,
-        [id, input.name, email, passwordHash, input.role]
+        `insert into users (id, name, email, password_hash, role, driver_id) values ($1,$2,$3,$4,$5,$6) returning id, name, email, role, driver_id, created_at`,
+        [id, input.name, email, passwordHash, input.role, input.driverId ?? null]
       );
       const r = res.rows[0];
-      return { user: { id: r.id, name: r.name, email: r.email, role: r.role as Role, createdAt: toIso(r.created_at) } };
+      return { user: { id: r.id, name: r.name, email: r.email, role: r.role as Role, driverId: r.driver_id ?? undefined, createdAt: toIso(r.created_at) } };
     },
 
-    async update(id: string, input: { name?: string; role?: Role }) {
+    async update(id: string, input: { name?: string; role?: Role; driverId?: string | null }) {
       if (!pool) {
         const idx = memUsers.findIndex((u) => u.id === id);
         if (idx === -1) return { error: "User not found" as const };
         memUsers[idx] = { ...memUsers[idx], ...input };
         return { user: safeUser(memUsers[idx]) };
       }
+      // Build update query dynamically based on what fields are provided
+      const updates: string[] = [];
+      const params: any[] = [id];
+      let paramIndex = 2;
+      
+      if (input.name !== undefined) {
+        updates.push(`name = $${paramIndex}`);
+        params.push(input.name);
+        paramIndex++;
+      }
+      
+      if (input.role !== undefined) {
+        updates.push(`role = $${paramIndex}`);
+        params.push(input.role);
+        paramIndex++;
+      }
+      
+      if (input.driverId !== undefined) {
+        updates.push(`driver_id = $${paramIndex}`);
+        params.push(input.driverId || null);
+        paramIndex++;
+      }
+      
+      if (updates.length === 0) {
+        // No updates, just return the current user
+        const res = await pool.query(`select id, name, email, role, driver_id, created_at from users where id=$1`, [id]);
+        if (!res.rowCount) return { error: "User not found" as const };
+        const r = res.rows[0];
+        return { user: { id: r.id, name: r.name, email: r.email, role: r.role as Role, driverId: r.driver_id ?? undefined, createdAt: toIso(r.created_at) } };
+      }
+      
       const res = await pool.query(
-        `update users set name = coalesce($2, name), role = coalesce($3, role) where id=$1 returning id, name, email, role, created_at`,
-        [id, input.name ?? null, input.role ?? null]
+        `update users set ${updates.join(", ")} where id=$1 returning id, name, email, role, driver_id, created_at`,
+        params
       );
       if (!res.rowCount) return { error: "User not found" as const };
       const r = res.rows[0];
-      return { user: { id: r.id, name: r.name, email: r.email, role: r.role as Role, createdAt: toIso(r.created_at) } };
+      return { user: { id: r.id, name: r.name, email: r.email, role: r.role as Role, driverId: r.driver_id ?? undefined, createdAt: toIso(r.created_at) } };
     },
 
     async resetPassword(id: string, newPassword: string) {
@@ -123,10 +156,10 @@ export const store = {
       }
       const hasTrips = await pool.query(`select 1 from trips where created_by_user_id=$1 limit 1`, [id]);
       if (hasTrips.rowCount) return { error: "Cannot delete user with trips" as const, conflict: true as const };
-      const res = await pool.query(`delete from users where id=$1 returning id, name, email, role, created_at`, [id]);
+      const res = await pool.query(`delete from users where id=$1 returning id, name, email, role, driver_id, created_at`, [id]);
       if (!res.rowCount) return { error: "User not found" as const };
       const r = res.rows[0];
-      return { user: { id: r.id, name: r.name, email: r.email, role: r.role as Role, createdAt: toIso(r.created_at) } };
+      return { user: { id: r.id, name: r.name, email: r.email, role: r.role as Role, driverId: r.driver_id ?? undefined, createdAt: toIso(r.created_at) } };
     },
   },
 

@@ -88,10 +88,10 @@ export const api = {
   companySetActive: (id: string, active: boolean) =>
     request(`/companies/${id}/active`, { method: "PATCH", body: JSON.stringify({ active }) }),
 
-  usersList: () => request<Array<{ id: string; name: string; email: string; role: string; createdAt: string }>>("/users"),
-  userCreate: (data: { name: string; email: string; password: string; role: "admin" | "user" }) =>
+  usersList: () => request<Array<{ id: string; name: string; email: string; role: string; driverId?: string; createdAt: string }>>("/users"),
+  userCreate: (data: { name: string; email: string; password: string; role: "admin" | "user" | "driver"; driverId?: string }) =>
     request("/users", { method: "POST", body: JSON.stringify(data) }),
-  userUpdate: (id: string, data: { name?: string; role?: "admin" | "user" }) =>
+  userUpdate: (id: string, data: { name?: string; role?: "admin" | "user" | "driver"; driverId?: string | null }) =>
     request(`/users/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   userDelete: (id: string) => request(`/users/${id}`, { method: "DELETE" }),
   userResetPassword: (id: string) => request(`/users/${id}/reset-password`, { method: "POST" }),

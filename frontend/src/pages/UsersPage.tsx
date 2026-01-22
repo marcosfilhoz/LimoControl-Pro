@@ -5,13 +5,14 @@ import { Input } from "../components/Input";
 import { Modal } from "../components/Modal";
 import { api } from "../lib/api";
 
-type UserRow = { id: string; name: string; email: string; role: string; createdAt: string };
+type UserRow = { id: string; name: string; email: string; role: string; driverId?: string; createdAt: string };
 
 export function UsersPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
   const [items, setItems] = useState<UserRow[]>([]);
+  const [drivers, setDrivers] = useState<Array<{ id: string; name: string; active: boolean }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,16 +22,19 @@ export function UsersPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "user">("user");
+  const [role, setRole] = useState<"admin" | "user" | "driver">("user");
+  const [driverId, setDriverId] = useState<string>("");
 
   useEffect(() => {
     let alive = true;
     if (!isAdmin) return;
     setLoading(true);
-    api
-      .usersList()
-      .then((d) => {
-        if (alive) setItems(d);
+    Promise.all([api.usersList(), api.driversList()])
+      .then(([u, d]) => {
+        if (alive) {
+          setItems(u);
+          setDrivers(d);
+        }
       })
       .catch(() => {
         if (alive) setError("Could not load users (admin only).");
@@ -54,13 +58,14 @@ export function UsersPage() {
     setEmail("");
     setPassword("");
     setRole("user");
+    setDriverId("");
     setCreateOpen(true);
   }
 
   async function submit() {
     setError(null);
     try {
-      await api.userCreate({ name, email, password, role });
+      await api.userCreate({ name, email, password, role, driverId: role === "driver" && driverId ? driverId : undefined });
       setCreateOpen(false);
       await refresh();
     } catch (e: any) {
@@ -73,7 +78,8 @@ export function UsersPage() {
     setError(null);
     setEditing(u);
     setName(u.name);
-    setRole((u.role as "admin" | "user") || "user");
+    setRole((u.role as "admin" | "user" | "driver") || "user");
+    setDriverId(u.driverId || "");
     setEditOpen(true);
   }
 
@@ -81,7 +87,7 @@ export function UsersPage() {
     if (!editing) return;
     setError(null);
     try {
-      await api.userUpdate(editing.id, { name, role });
+      await api.userUpdate(editing.id, { name, role, driverId: role === "driver" && driverId ? driverId : role === "driver" ? null : undefined });
       setEditOpen(false);
       setEditing(null);
       await refresh();
@@ -194,14 +200,37 @@ export function UsersPage() {
             <select
               className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
               value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "user")}
+              onChange={(e) => {
+                setRole(e.target.value as "admin" | "user" | "driver");
+                if (e.target.value !== "driver") setDriverId("");
+              }}
             >
               <option value="user">user</option>
               <option value="admin">admin</option>
+              <option value="driver">driver</option>
             </select>
           </label>
+          {role === "driver" && (
+            <label className="block">
+              <div className="mb-1 text-sm font-medium text-slate-700">Driver</div>
+              <select
+                className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
+                value={driverId}
+                onChange={(e) => setDriverId(e.target.value)}
+              >
+                <option value="">Select a driver...</option>
+                {drivers
+                  .filter((d) => d.active)
+                  .map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
           <div className="flex gap-2">
-            <Button onClick={submit} disabled={!name.trim() || !email.trim() || password.length < 6}>
+            <Button onClick={submit} disabled={!name.trim() || !email.trim() || password.length < 6 || (role === "driver" && !driverId)}>
               Create
             </Button>
             <Button variant="ghost" onClick={() => setCreateOpen(false)}>
@@ -219,14 +248,37 @@ export function UsersPage() {
             <select
               className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
               value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "user")}
+              onChange={(e) => {
+                setRole(e.target.value as "admin" | "user" | "driver");
+                if (e.target.value !== "driver") setDriverId("");
+              }}
             >
               <option value="user">user</option>
               <option value="admin">admin</option>
+              <option value="driver">driver</option>
             </select>
           </label>
+          {role === "driver" && (
+            <label className="block">
+              <div className="mb-1 text-sm font-medium text-slate-700">Driver</div>
+              <select
+                className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
+                value={driverId}
+                onChange={(e) => setDriverId(e.target.value)}
+              >
+                <option value="">Select a driver...</option>
+                {drivers
+                  .filter((d) => d.active)
+                  .map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
           <div className="flex gap-2">
-            <Button onClick={submitEdit} disabled={!name.trim()}>
+            <Button onClick={submitEdit} disabled={!name.trim() || (role === "driver" && !driverId)}>
               Save
             </Button>
             {editing ? (

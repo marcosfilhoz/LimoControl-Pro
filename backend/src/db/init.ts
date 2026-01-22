@@ -253,6 +253,18 @@ export async function initDbIfNeeded() {
     end $$;
   `);
 
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='users' and column_name='driver_id') then
+        null;
+      else
+        alter table users add column driver_id text references drivers(id) on delete set null;
+        raise notice 'Added driver_id column to users table';
+      end if;
+    end $$;
+  `);
+
   await exec(`create index if not exists idx_trips_driver_id on trips(driver_id);`);
   await exec(`create index if not exists idx_trips_client_id on trips(client_id);`);
   await exec(`create index if not exists idx_trips_company_id on trips(company_id);`);
