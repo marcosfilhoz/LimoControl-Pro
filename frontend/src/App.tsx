@@ -6,6 +6,7 @@ import { AppShell } from "./layout/AppShell";
 import { ClientsPage } from "./pages/ClientsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DriversPage } from "./pages/DriversPage";
+import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { RidesFunnelPage } from "./pages/RidesFunnelPage";
 import { TripsPage } from "./pages/TripsPage";
@@ -28,7 +29,7 @@ export function App() {
             <RequireAuth>
               <AppShell>
                 <Routes>
-                  <Route path="/" element={<HomeRedirect />} />
+                  <Route path="/" element={<HomePage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/rides-funnel" element={<RidesFunnelPage />} />
                   <Route path="/trips" element={<TripsPage />} />

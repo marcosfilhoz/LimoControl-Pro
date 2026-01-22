@@ -6,6 +6,7 @@ import { Button } from "../components/Button";
 type NavItem = { to: string; label: string; adminOnly?: boolean; driverOnly?: boolean; excludeDriver?: boolean };
 
 const nav: NavItem[] = [
+  { to: "/", label: "Home" },
   { to: "/dashboard", label: "Dashboard", excludeDriver: true },
   { to: "/rides-funnel", label: "Rides Funnel" },
   { to: "/trips", label: "Trips", excludeDriver: true },
@@ -42,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="block h-0.5 w-5 rounded bg-slate-800" />
               <span className="block h-0.5 w-5 rounded bg-slate-800" />
             </button>
-            <Link to={isDriver ? "/rides-funnel" : "/dashboard"} className="text-base font-semibold">
+            <Link to="/" className="text-base font-semibold">
               <span className="inline-flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
                 LimoControl
