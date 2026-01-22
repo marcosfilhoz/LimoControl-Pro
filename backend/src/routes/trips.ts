@@ -203,10 +203,16 @@ async function canUpdateTripStatus(tripId: string, auth: any): Promise<{ allowed
   // Drivers can only update their own trips
   if (auth.role === "driver") {
     // Get user by ID to check driverId
-    const allUsers = await store.users.listSafe();
-    const user = allUsers.find((u) => u.id === auth.userId);
-    if (!user || !user.driverId) return { allowed: false, trip };
-    if (trip.driverId !== user.driverId) return { allowed: false, trip };
+    const user = await store.users.findById(auth.userId);
+    if (!user || !user.driverId) {
+      console.log(`[canUpdateTripStatus] Driver user ${auth.userId} not found or has no driverId`);
+      return { allowed: false, trip };
+    }
+    if (trip.driverId !== user.driverId) {
+      console.log(`[canUpdateTripStatus] Trip driverId (${trip.driverId}) doesn't match user driverId (${user.driverId})`);
+      return { allowed: false, trip };
+    }
+    console.log(`[canUpdateTripStatus] Driver ${auth.userId} allowed to update trip ${tripId}`);
     return { allowed: true, trip };
   }
   
@@ -225,11 +231,16 @@ router.patch("/:id/start", (req, res) => {
     if (!allowed) return res.status(403).json({ error: "Forbidden" });
     if (trip!.status !== "pending") return res.status(400).json({ error: "Trip must be pending to start" });
     
+    console.log(`[Trips] Updating trip ${req.params.id} status to in_progress`);
     const out = await store.trips.update(req.params.id, { status: "in_progress" } as any);
-    if ("error" in out) return res.status(404).json({ error: out.error });
+    if ("error" in out) {
+      console.error(`[Trips] Error updating trip:`, out.error);
+      return res.status(404).json({ error: out.error });
+    }
+    console.log(`[Trips] Trip ${req.params.id} status updated successfully`);
     return res.json(out.trip);
   })().catch((err) => {
-    console.error(err);
+    console.error("[Trips] Error in start route:", err);
     res.status(500).json({ error: "Internal server error" });
   });
 });

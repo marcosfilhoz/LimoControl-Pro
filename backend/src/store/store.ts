@@ -718,44 +718,169 @@ export const store = {
       };
     },
 
-    async update(id: string, input: TripUpdateInput) {
+    async update(id: string, input: Partial<TripUpdateInput>) {
       if (!pool) {
         const idx = memTrips.findIndex((t) => t.id === id);
         if (idx === -1) return { error: "Trip not found" as const };
         memTrips[idx] = { ...memTrips[idx], ...input, received: input.received ?? memTrips[idx].received ?? false };
         return { trip: memTrips[idx] };
       }
+      
+      // Build update query dynamically based on what fields are provided
+      const updates: string[] = [];
+      const params: any[] = [id];
+      let paramIndex = 2;
+      
+      if (input.driverId !== undefined) {
+        updates.push(`driver_id = $${paramIndex}`);
+        params.push(input.driverId);
+        paramIndex++;
+      }
+      if (input.clientId !== undefined) {
+        updates.push(`client_id = $${paramIndex}`);
+        params.push(input.clientId ?? null);
+        paramIndex++;
+      }
+      if (input.companyId !== undefined) {
+        updates.push(`company_id = $${paramIndex}`);
+        params.push(input.companyId);
+        paramIndex++;
+      }
+      if (input.tripType !== undefined) {
+        updates.push(`trip_type = $${paramIndex}`);
+        params.push(input.tripType ?? "transfer");
+        paramIndex++;
+      }
+      if (input.hourlyStartTime !== undefined) {
+        updates.push(`hourly_start_time = $${paramIndex}`);
+        params.push(input.hourlyStartTime ?? null);
+        paramIndex++;
+      }
+      if (input.hourlyEndTime !== undefined) {
+        updates.push(`hourly_end_time = $${paramIndex}`);
+        params.push(input.hourlyEndTime ?? null);
+        paramIndex++;
+      }
+      if (input.vehicleType !== undefined) {
+        updates.push(`vehicle_type = $${paramIndex}`);
+        params.push(input.vehicleType ?? null);
+        paramIndex++;
+      }
+      if (input.cnf !== undefined) {
+        updates.push(`cnf = $${paramIndex}`);
+        params.push(input.cnf ?? null);
+        paramIndex++;
+      }
+      if (input.flightNumber !== undefined) {
+        updates.push(`flight_number = $${paramIndex}`);
+        params.push(input.flightNumber ?? null);
+        paramIndex++;
+      }
+      if (input.clientPhone !== undefined) {
+        updates.push(`client_phone = coalesce($${paramIndex}, client_phone)`);
+        params.push(input.clientPhone ?? null);
+        paramIndex++;
+      }
+      if (input.meetGreet !== undefined) {
+        updates.push(`meet_greet = coalesce($${paramIndex}, meet_greet)`);
+        params.push(input.meetGreet ?? null);
+        paramIndex++;
+      }
+      if (input.startAt !== undefined) {
+        updates.push(`start_at = $${paramIndex}`);
+        params.push(input.startAt);
+        paramIndex++;
+      }
+      if (input.endAt !== undefined) {
+        updates.push(`end_at = $${paramIndex}`);
+        params.push(input.endAt);
+        paramIndex++;
+      }
+      if (input.origin !== undefined) {
+        updates.push(`origin = $${paramIndex}`);
+        params.push(input.origin);
+        paramIndex++;
+      }
+      if (input.destination !== undefined) {
+        updates.push(`destination = $${paramIndex}`);
+        params.push(input.destination);
+        paramIndex++;
+      }
+      if (input.stop !== undefined) {
+        updates.push(`stop = $${paramIndex}`);
+        params.push(input.stop ?? null);
+        paramIndex++;
+      }
+      if (input.miles !== undefined) {
+        updates.push(`miles = $${paramIndex}`);
+        params.push(input.miles);
+        paramIndex++;
+      }
+      if (input.durationMinutes !== undefined) {
+        updates.push(`duration_minutes = $${paramIndex}`);
+        params.push(input.durationMinutes);
+        paramIndex++;
+      }
+      if (input.price !== undefined) {
+        updates.push(`price = $${paramIndex}`);
+        params.push(input.price);
+        paramIndex++;
+      }
+      if (input.received !== undefined) {
+        updates.push(`received = coalesce($${paramIndex}, received)`);
+        params.push(input.received ?? null);
+        paramIndex++;
+      }
+      if (input.status !== undefined) {
+        updates.push(`status = $${paramIndex}`);
+        params.push(input.status);
+        paramIndex++;
+      }
+      if (input.notes !== undefined) {
+        updates.push(`notes = $${paramIndex}`);
+        params.push(input.notes ?? null);
+        paramIndex++;
+      }
+      
+      if (updates.length === 0) {
+        // No updates, just return the current trip
+        const res = await pool.query(`select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at from trips where id=$1`, [id]);
+        if (!res.rowCount) return { error: "Trip not found" as const };
+        const r = res.rows[0];
+        return {
+          trip: {
+            id: r.id,
+            createdByUserId: r.created_by_user_id,
+            driverId: r.driver_id,
+            clientId: r.client_id ?? null,
+            companyId: r.company_id,
+            tripType: r.trip_type ?? "transfer",
+            hourlyStartTime: r.hourly_start_time ?? undefined,
+            hourlyEndTime: r.hourly_end_time ?? undefined,
+            vehicleType: r.vehicle_type ?? null,
+            cnf: r.cnf ?? undefined,
+            flightNumber: r.flight_number ?? undefined,
+            meetGreet: typeof r.meet_greet === "string" && r.meet_greet.trim() ? r.meet_greet : undefined,
+            clientPhone: typeof r.client_phone === "string" && r.client_phone.trim() ? r.client_phone : undefined,
+            startAt: toIso(r.start_at),
+            endAt: toIso(r.end_at),
+            origin: r.origin,
+            destination: r.destination,
+            stop: r.stop ?? undefined,
+            miles: toNum(r.miles),
+            durationMinutes: toNum(r.duration_minutes),
+            price: toNum(r.price),
+            received: !!r.received,
+            status: (r.status || "pending") as TripStatus,
+            notes: r.notes ?? undefined,
+            createdAt: toIso(r.created_at),
+          },
+        };
+      }
+      
       const res = await pool.query(
-        `update trips set
-          driver_id=$2, client_id=$3, company_id=$4, trip_type=$5, hourly_start_time=$6, hourly_end_time=$7, vehicle_type=$8, cnf=$9, flight_number=$10, client_phone=coalesce($11, client_phone), meet_greet=coalesce($12, meet_greet), start_at=$13, end_at=$14, origin=$15, destination=$16, stop=$17,
-          miles=$18, duration_minutes=$19, price=$20, received=coalesce($21, received), status=coalesce($22, status), notes=$23
-        where id=$1
-        returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at`,
-        [
-          id,
-          input.driverId,
-          input.clientId ?? null,
-          input.companyId,
-          input.tripType ?? "transfer",
-          input.hourlyStartTime ?? null,
-          input.hourlyEndTime ?? null,
-          input.vehicleType ?? null,
-          input.cnf ?? null,
-          input.flightNumber ?? null,
-          input.clientPhone ?? null,
-          input.meetGreet ?? null,
-          input.startAt,
-          input.endAt,
-          input.origin,
-          input.destination,
-          input.stop ?? null,
-          input.miles,
-          input.durationMinutes,
-          input.price,
-          input.received ?? null,
-          input.status ?? null,
-          input.notes ?? null,
-        ]
+        `update trips set ${updates.join(", ")} where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at`,
+        params
       );
       if (!res.rowCount) return { error: "Trip not found" as const };
       const r = res.rows[0];
