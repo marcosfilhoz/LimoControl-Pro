@@ -567,7 +567,7 @@ export const store = {
         where.push(`meet_greet ilike $${params.length}`);
       }
       const sql =
-        `select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at from trips` +
+        `select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at from trips` +
         (where.length ? ` where ${where.join(" and ")}` : "") +
         ` order by start_at desc`;
       console.log(`[Store] Executing query: ${sql}`, params);
@@ -597,6 +597,8 @@ export const store = {
         price: toNum(r.price),
         received: !!r.received,
         status: (r.status || "pending") as TripStatus,
+        startedAt: r.started_at ? toIso(r.started_at) : undefined,
+        finishedAt: r.finished_at ? toIso(r.finished_at) : undefined,
         notes: r.notes ?? undefined,
         createdAt: toIso(r.created_at),
       }));
@@ -607,7 +609,7 @@ export const store = {
         return memTrips.find((t) => t.id === id) || null;
       }
       const res = await pool.query(
-        `select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at
+        `select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at
          from trips where id=$1 limit 1`,
         [id]
       );
@@ -637,6 +639,8 @@ export const store = {
         price: toNum(r.price),
         received: !!r.received,
         status: (r.status || "pending") as TripStatus,
+        startedAt: r.started_at ? toIso(r.started_at) : undefined,
+        finishedAt: r.finished_at ? toIso(r.finished_at) : undefined,
         notes: r.notes ?? undefined,
         createdAt: toIso(r.created_at),
       };
@@ -660,7 +664,7 @@ export const store = {
       const res = await pool.query(
         `insert into trips (id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
-         returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at`,
+         returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
         [
           id,
           createdByUserId,
@@ -713,6 +717,8 @@ export const store = {
         price: toNum(r.price),
         received: !!r.received,
         status: (r.status || "pending") as TripStatus,
+        startedAt: r.started_at ? toIso(r.started_at) : undefined,
+        finishedAt: r.finished_at ? toIso(r.finished_at) : undefined,
         notes: r.notes ?? undefined,
         createdAt: toIso(r.created_at),
       };
@@ -836,6 +842,16 @@ export const store = {
         params.push(input.status);
         paramIndex++;
       }
+      if (input.startedAt !== undefined) {
+        updates.push(`started_at = $${paramIndex}`);
+        params.push(input.startedAt ? new Date(input.startedAt).toISOString() : null);
+        paramIndex++;
+      }
+      if (input.finishedAt !== undefined) {
+        updates.push(`finished_at = $${paramIndex}`);
+        params.push(input.finishedAt ? new Date(input.finishedAt).toISOString() : null);
+        paramIndex++;
+      }
       if (input.notes !== undefined) {
         updates.push(`notes = $${paramIndex}`);
         params.push(input.notes ?? null);
@@ -844,7 +860,7 @@ export const store = {
       
       if (updates.length === 0) {
         // No updates, just return the current trip
-        const res = await pool.query(`select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at from trips where id=$1`, [id]);
+        const res = await pool.query(`select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at from trips where id=$1`, [id]);
         if (!res.rowCount) return { error: "Trip not found" as const };
         const r = res.rows[0];
         return {
@@ -872,6 +888,8 @@ export const store = {
             price: toNum(r.price),
             received: !!r.received,
             status: (r.status || "pending") as TripStatus,
+            startedAt: r.started_at ? toIso(r.started_at) : undefined,
+            finishedAt: r.finished_at ? toIso(r.finished_at) : undefined,
             notes: r.notes ?? undefined,
             createdAt: toIso(r.created_at),
           },
@@ -879,7 +897,7 @@ export const store = {
       }
       
       const res = await pool.query(
-        `update trips set ${updates.join(", ")} where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at`,
+        `update trips set ${updates.join(", ")} where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
         params
       );
       if (!res.rowCount) return { error: "Trip not found" as const };
@@ -909,6 +927,8 @@ export const store = {
           price: toNum(r.price),
           received: !!r.received,
           status: (r.status || "pending") as TripStatus,
+          startedAt: r.started_at ? toIso(r.started_at) : undefined,
+          finishedAt: r.finished_at ? toIso(r.finished_at) : undefined,
           notes: r.notes ?? undefined,
           createdAt: toIso(r.created_at),
         },
@@ -923,7 +943,7 @@ export const store = {
         return { trip: memTrips[idx] };
       }
       const res = await pool.query(
-        `update trips set received=$2 where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at`,
+        `update trips set received=$2 where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
         [id, received]
       );
       if (!res.rowCount) return { error: "Trip not found" as const };
@@ -953,6 +973,8 @@ export const store = {
           price: toNum(r.price),
           received: !!r.received,
           status: (r.status || "pending") as TripStatus,
+          startedAt: r.started_at ? toIso(r.started_at) : undefined,
+          finishedAt: r.finished_at ? toIso(r.finished_at) : undefined,
           notes: r.notes ?? undefined,
           createdAt: toIso(r.created_at),
         },
@@ -971,7 +993,7 @@ export const store = {
       if (!res.rowCount) return { error: "Trip not found" as const };
       if (res.rows[0].received) return { error: "Cannot delete a received trip" as const, conflict: true as const };
       const del = await pool.query(
-        `delete from trips where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at`,
+        `delete from trips where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
         [id]
       );
       const r = del.rows[0];
@@ -1000,6 +1022,8 @@ export const store = {
           price: toNum(r.price),
           received: !!r.received,
           status: (r.status || "pending") as TripStatus,
+          startedAt: r.started_at ? toIso(r.started_at) : undefined,
+          finishedAt: r.finished_at ? toIso(r.finished_at) : undefined,
           notes: r.notes ?? undefined,
           createdAt: toIso(r.created_at),
         },

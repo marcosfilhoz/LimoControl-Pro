@@ -231,8 +231,9 @@ router.patch("/:id/start", (req, res) => {
     if (!allowed) return res.status(403).json({ error: "Forbidden" });
     if (trip!.status !== "pending") return res.status(400).json({ error: "Trip must be pending to start" });
     
-    console.log(`[Trips] Updating trip ${req.params.id} status to in_progress`);
-    const out = await store.trips.update(req.params.id, { status: "in_progress" } as any);
+    const startedAt = new Date().toISOString();
+    console.log(`[Trips] Updating trip ${req.params.id} status to in_progress, startedAt: ${startedAt}`);
+    const out = await store.trips.update(req.params.id, { status: "in_progress", startedAt } as any);
     if ("error" in out) {
       console.error(`[Trips] Error updating trip:`, out.error);
       return res.status(404).json({ error: out.error });
@@ -290,11 +291,30 @@ router.patch("/:id/finish", (req, res) => {
     if (!allowed) return res.status(403).json({ error: "Forbidden" });
     if (trip!.status === "completed") return res.status(400).json({ error: "Trip is already completed" });
     
-    const out = await store.trips.update(req.params.id, { status: "completed" } as any);
+    const finishedAt = new Date().toISOString();
+    
+    // Calculate duration from startedAt to finishedAt (including pauses)
+    let durationMinutes = trip!.durationMinutes; // Default to existing duration
+    if (trip!.startedAt) {
+      const startTime = new Date(trip!.startedAt).getTime();
+      const finishTime = new Date(finishedAt).getTime();
+      const totalMilliseconds = finishTime - startTime;
+      durationMinutes = Math.round(totalMilliseconds / (1000 * 60)); // Convert to minutes
+      console.log(`[Trips] Calculated duration: ${durationMinutes} minutes (from ${trip!.startedAt} to ${finishedAt})`);
+    } else {
+      console.log(`[Trips] Warning: Trip ${req.params.id} has no startedAt, using existing duration`);
+    }
+    
+    console.log(`[Trips] Finishing trip ${req.params.id}, duration: ${durationMinutes} minutes`);
+    const out = await store.trips.update(req.params.id, { 
+      status: "completed", 
+      finishedAt,
+      durationMinutes 
+    } as any);
     if ("error" in out) return res.status(404).json({ error: out.error });
     return res.json(out.trip);
   })().catch((err) => {
-    console.error(err);
+    console.error("[Trips] Error in finish route:", err);
     res.status(500).json({ error: "Internal server error" });
   });
 });

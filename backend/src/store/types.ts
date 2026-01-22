@@ -65,6 +65,9 @@ export interface Trip {
   price: number;
   received: boolean;
   status: TripStatus;
+  // Timestamps for tracking actual trip execution
+  startedAt?: string; // When driver clicked "Start"
+  finishedAt?: string; // When driver clicked "Finish"
   notes?: string;
   createdAt: string;
 }

@@ -277,6 +277,30 @@ export async function initDbIfNeeded() {
     end $$;
   `);
 
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='started_at') then
+        null;
+      else
+        alter table trips add column started_at timestamptz;
+        raise notice 'Added started_at column to trips table';
+      end if;
+    end $$;
+  `);
+
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='finished_at') then
+        null;
+      else
+        alter table trips add column finished_at timestamptz;
+        raise notice 'Added finished_at column to trips table';
+      end if;
+    end $$;
+  `);
+
   await exec(`create index if not exists idx_trips_driver_id on trips(driver_id);`);
   await exec(`create index if not exists idx_trips_status on trips(status);`);
   await exec(`create index if not exists idx_trips_client_id on trips(client_id);`);

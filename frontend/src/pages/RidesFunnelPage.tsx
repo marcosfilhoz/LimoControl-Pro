@@ -27,10 +27,12 @@ type Trip = {
   price: number;
   received: boolean;
   status: "pending" | "in_progress" | "on_stop" | "completed";
+  startedAt?: string;
+  finishedAt?: string;
   notes?: string;
 };
 
-type StatusFilter = "active" | "all";
+type StatusFilter = "all" | "pending" | "in_progress" | "on_stop" | "completed" | "active";
 
 function formatDateTime(dateStr: string): string {
   const d = new Date(dateStr);
@@ -75,9 +77,9 @@ function getStatusLabel(status: Trip["status"]): string {
 export function RidesFunnelPage() {
   const { user } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [drivers, setDrivers] = useState<Array<{ id: string; name: string }>>([]);
-  const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
-  const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([]);
+  const [drivers, setDrivers] = useState<Array<{ id: string; name: string; active?: boolean }>>([]);
+  const [clients, setClients] = useState<Array<{ id: string; name: string; active?: boolean }>>([]);
+  const [companies, setCompanies] = useState<Array<{ id: string; name: string; active?: boolean }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState<Set<string>>(new Set());
@@ -86,6 +88,9 @@ export function RidesFunnelPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
+  const [filterDriverId, setFilterDriverId] = useState("");
+  const [filterClientId, setFilterClientId] = useState("");
+  const [filterCompanyId, setFilterCompanyId] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -119,6 +124,23 @@ export function RidesFunnelPage() {
     // Filter by status
     if (statusFilter === "active") {
       filtered = filtered.filter((t) => t.status === "pending" || t.status === "in_progress" || t.status === "on_stop");
+    } else if (statusFilter !== "all") {
+      filtered = filtered.filter((t) => t.status === statusFilter);
+    }
+
+    // Filter by driver
+    if (filterDriverId) {
+      filtered = filtered.filter((t) => t.driverId === filterDriverId);
+    }
+
+    // Filter by client
+    if (filterClientId) {
+      filtered = filtered.filter((t) => t.clientId === filterClientId);
+    }
+
+    // Filter by company
+    if (filterCompanyId) {
+      filtered = filtered.filter((t) => t.companyId === filterCompanyId);
     }
 
     // Filter by date
@@ -143,7 +165,7 @@ export function RidesFunnelPage() {
     filtered.sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime());
 
     return filtered;
-  }, [trips, statusFilter, filterFrom, filterTo]);
+  }, [trips, statusFilter, filterFrom, filterTo, filterDriverId, filterClientId, filterCompanyId]);
 
   const driverById = useMemo(() => new Map(drivers.map((d) => [d.id, d.name])), [drivers]);
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
@@ -195,24 +217,98 @@ export function RidesFunnelPage() {
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 rounded-xl border border-slate-200 bg-white p-4">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-700">Status:</label>
-          <select
-            className="h-9 rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          >
-            <option value="active">Active (Pending, In Progress, On Stop)</option>
-            <option value="all">All</option>
-          </select>
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mb-3 text-sm font-medium text-slate-700">Filters</div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
+            <select
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            >
+              <option value="active">Active (Pending, In Progress, On Stop)</option>
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="on_stop">On Stop</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          {user?.role !== "driver" && (
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Driver</label>
+                <select
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                  value={filterDriverId}
+                  onChange={(e) => setFilterDriverId(e.target.value)}
+                >
+                  <option value="">All drivers</option>
+                  {drivers
+                    .filter((d) => d.active !== false)
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Client</label>
+                <select
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                  value={filterClientId}
+                  onChange={(e) => setFilterClientId(e.target.value)}
+                >
+                  <option value="">All clients</option>
+                  {clients
+                    .filter((c) => c.active !== false)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Company</label>
+                <select
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                  value={filterCompanyId}
+                  onChange={(e) => setFilterCompanyId(e.target.value)}
+                >
+                  <option value="">All companies</option>
+                  {companies
+                    .filter((co) => co.active !== false)
+                    .map((co) => (
+                      <option key={co.id} value={co.id}>
+                        {co.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </>
+          )}
+          <DateFilterInput label="From Date" value={filterFrom} onChange={setFilterFrom} />
+          <DateFilterInput label="To Date" value={filterTo} onChange={setFilterTo} />
         </div>
-        <DateFilterInput label="From" value={filterFrom} onChange={setFilterFrom} />
-        <DateFilterInput label="To" value={filterTo} onChange={setFilterTo} />
-        {(filterFrom || filterTo) && (
-          <Button variant="ghost" onClick={() => { setFilterFrom(""); setFilterTo(""); }}>
-            Clear dates
-          </Button>
+        {(filterFrom || filterTo || filterDriverId || filterClientId || filterCompanyId || statusFilter !== "active") && (
+          <div className="mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setFilterFrom("");
+                setFilterTo("");
+                setFilterDriverId("");
+                setFilterClientId("");
+                setFilterCompanyId("");
+                setStatusFilter("active");
+              }}
+            >
+              Clear all filters
+            </Button>
+          </div>
         )}
       </div>
 
@@ -305,7 +401,11 @@ export function RidesFunnelPage() {
                       </div>
                       <div>
                         <span className="text-slate-600">Duration: </span>
-                        <span className="font-medium text-slate-900">{trip.durationMinutes} min</span>
+                        <span className="font-medium text-slate-900">
+                          {trip.status === "completed" && trip.finishedAt && trip.startedAt
+                            ? `${trip.durationMinutes} min (calculated)`
+                            : `${trip.durationMinutes} min`}
+                        </span>
                       </div>
                       {trip.hourlyStartTime && trip.hourlyEndTime && (
                         <>

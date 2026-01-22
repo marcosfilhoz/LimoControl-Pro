@@ -122,6 +122,8 @@ export const api = {
         price: number;
         received: boolean;
         status: "pending" | "in_progress" | "on_stop" | "completed";
+        startedAt?: string;
+        finishedAt?: string;
         notes?: string;
       }>
     >("/trips"),
