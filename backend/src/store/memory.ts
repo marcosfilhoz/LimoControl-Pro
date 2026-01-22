@@ -50,6 +50,7 @@ export const trips: Trip[] = [
     durationMinutes: 80,
     price: 250,
     received: false,
+    status: "pending",
     notes: "Viagem inicial demo",
     createdAt: now(),
   },

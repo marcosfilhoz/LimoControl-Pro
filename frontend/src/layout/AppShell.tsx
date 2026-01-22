@@ -3,14 +3,15 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 
-type NavItem = { to: string; label: string; adminOnly?: boolean };
+type NavItem = { to: string; label: string; adminOnly?: boolean; driverOnly?: boolean; excludeDriver?: boolean };
 
 const nav: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/trips", label: "Trips" },
-  { to: "/drivers", label: "Drivers" },
-  { to: "/clients", label: "Client" },
-  { to: "/companies", label: "Companies" },
+  { to: "/dashboard", label: "Dashboard", excludeDriver: true },
+  { to: "/rides-funnel", label: "Rides Funnel", driverOnly: true },
+  { to: "/trips", label: "Trips", excludeDriver: true },
+  { to: "/drivers", label: "Drivers", excludeDriver: true },
+  { to: "/clients", label: "Client", excludeDriver: true },
+  { to: "/companies", label: "Companies", excludeDriver: true },
   { to: "/users", label: "Users", adminOnly: true },
 ];
 
@@ -19,6 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
+  const isDriver = user?.role === "driver";
   const initials = (user?.name || user?.email || "?")
     .split(" ")
     .filter(Boolean)
@@ -83,7 +85,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <aside className="hidden md:block">
           <nav className="rounded-xl border border-slate-200 bg-white p-2">
             {nav
-              .filter((item) => !item.adminOnly || isAdmin)
+              .filter((item) => {
+                if (item.adminOnly && !isAdmin) return false;
+                if (item.driverOnly && !isDriver) return false;
+                if (item.excludeDriver && isDriver) return false;
+                return true;
+              })
               .map((item) => (
               <NavLink
                 key={item.to}
@@ -104,7 +111,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="md:hidden">
             <nav className="rounded-xl border border-slate-200 bg-white p-2">
               {nav
-                .filter((item) => !item.adminOnly || isAdmin)
+                .filter((item) => {
+                  if (item.adminOnly && !isAdmin) return false;
+                  if (item.driverOnly && !isDriver) return false;
+                  if (item.excludeDriver && isDriver) return false;
+                  return true;
+                })
                 .map((item) => (
                 <NavLink
                   key={item.to}

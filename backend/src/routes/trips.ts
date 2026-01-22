@@ -40,9 +40,20 @@ router.get("/", (req, res) => {
   (async () => {
     const { driverId, clientId, companyId, cnf, flightNumber, meetGreet } = req.query as any;
     const auth = (req as AuthedRequest).auth;
+    
+    // If user is a driver, filter by their linked driver
+    let filterDriverId = driverId ? String(driverId) : undefined;
+    if (auth?.role === "driver" && !filterDriverId) {
+      const allUsers = await store.users.listSafe();
+      const user = allUsers.find((u) => u.id === auth.userId);
+      if (user?.driverId) {
+        filterDriverId = user.driverId;
+      }
+    }
+    
     const filtered = await store.trips.list({
       createdByUserId: auth?.role === "admin" ? undefined : auth?.userId,
-      driverId: driverId ? String(driverId) : undefined,
+      driverId: filterDriverId,
       clientId: clientId ? String(clientId) : undefined,
       companyId: companyId ? String(companyId) : undefined,
       cnf: cnf ? String(cnf) : undefined,
@@ -141,6 +152,102 @@ router.patch("/:id/received", (req, res) => {
     const parsed = receivedSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
     const out = await store.trips.setReceived(req.params.id, parsed.data.received);
+    if ("error" in out) return res.status(404).json({ error: out.error });
+    return res.json(out.trip);
+  })().catch((err) => {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  });
+});
+
+// Helper function to check if user can update trip status
+async function canUpdateTripStatus(tripId: string, auth: any): Promise<{ allowed: boolean; trip?: any }> {
+  const trip = await store.trips.get(tripId);
+  if (!trip) return { allowed: false };
+  
+  // Admins can update any trip
+  if (auth.role === "admin") return { allowed: true, trip };
+  
+  // Drivers can only update their own trips
+  if (auth.role === "driver") {
+    // Get user by ID to check driverId
+    const allUsers = await store.users.listSafe();
+    const user = allUsers.find((u) => u.id === auth.userId);
+    if (!user || !user.driverId) return { allowed: false, trip };
+    if (trip.driverId !== user.driverId) return { allowed: false, trip };
+    return { allowed: true, trip };
+  }
+  
+  // Other users can update trips they created
+  if (trip.createdByUserId === auth.userId) return { allowed: true, trip };
+  
+  return { allowed: false, trip };
+}
+
+router.patch("/:id/start", (req, res) => {
+  (async () => {
+    const auth = (req as AuthedRequest).auth;
+    if (!auth) return res.status(401).json({ error: "Unauthorized" });
+    
+    const { allowed, trip } = await canUpdateTripStatus(req.params.id, auth);
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+    if (trip!.status !== "pending") return res.status(400).json({ error: "Trip must be pending to start" });
+    
+    const out = await store.trips.update(req.params.id, { status: "in_progress" } as any);
+    if ("error" in out) return res.status(404).json({ error: out.error });
+    return res.json(out.trip);
+  })().catch((err) => {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  });
+});
+
+router.patch("/:id/pause", (req, res) => {
+  (async () => {
+    const auth = (req as AuthedRequest).auth;
+    if (!auth) return res.status(401).json({ error: "Unauthorized" });
+    
+    const { allowed, trip } = await canUpdateTripStatus(req.params.id, auth);
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+    if (trip!.status !== "in_progress") return res.status(400).json({ error: "Trip must be in progress to pause" });
+    
+    const out = await store.trips.update(req.params.id, { status: "on_stop" } as any);
+    if ("error" in out) return res.status(404).json({ error: out.error });
+    return res.json(out.trip);
+  })().catch((err) => {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  });
+});
+
+router.patch("/:id/resume", (req, res) => {
+  (async () => {
+    const auth = (req as AuthedRequest).auth;
+    if (!auth) return res.status(401).json({ error: "Unauthorized" });
+    
+    const { allowed, trip } = await canUpdateTripStatus(req.params.id, auth);
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+    if (trip!.status !== "on_stop") return res.status(400).json({ error: "Trip must be on stop to resume" });
+    
+    const out = await store.trips.update(req.params.id, { status: "in_progress" } as any);
+    if ("error" in out) return res.status(404).json({ error: out.error });
+    return res.json(out.trip);
+  })().catch((err) => {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  });
+});
+
+router.patch("/:id/finish", (req, res) => {
+  (async () => {
+    const auth = (req as AuthedRequest).auth;
+    if (!auth) return res.status(401).json({ error: "Unauthorized" });
+    
+    const { allowed, trip } = await canUpdateTripStatus(req.params.id, auth);
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+    if (trip!.status === "completed") return res.status(400).json({ error: "Trip is already completed" });
+    
+    const out = await store.trips.update(req.params.id, { status: "completed" } as any);
     if ("error" in out) return res.status(404).json({ error: out.error });
     return res.json(out.trip);
   })().catch((err) => {

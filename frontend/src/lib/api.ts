@@ -121,6 +121,7 @@ export const api = {
         durationMinutes: number;
         price: number;
         received: boolean;
+        status: "pending" | "in_progress" | "on_stop" | "completed";
         notes?: string;
       }>
     >("/trips"),
@@ -174,6 +175,10 @@ export const api = {
   }) => request(`/trips/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   tripSetReceived: (id: string, received: boolean) =>
     request(`/trips/${id}/received`, { method: "PATCH", body: JSON.stringify({ received }) }),
+  tripStart: (id: string) => request(`/trips/${id}/start`, { method: "PATCH" }),
+  tripPause: (id: string) => request(`/trips/${id}/pause`, { method: "PATCH" }),
+  tripResume: (id: string) => request(`/trips/${id}/resume`, { method: "PATCH" }),
+  tripFinish: (id: string) => request(`/trips/${id}/finish`, { method: "PATCH" }),
   tripDelete: (id: string) => request(`/trips/${id}`, { method: "DELETE" }),
 };
 

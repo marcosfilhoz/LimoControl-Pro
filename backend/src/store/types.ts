@@ -37,6 +37,8 @@ export interface Company {
   createdAt: string;
 }
 
+export type TripStatus = "pending" | "in_progress" | "on_stop" | "completed";
+
 export interface Trip {
   id: string;
   createdByUserId: string;
@@ -62,6 +64,7 @@ export interface Trip {
   durationMinutes: number;
   price: number;
   received: boolean;
+  status: TripStatus;
   notes?: string;
   createdAt: string;
 }

@@ -265,7 +265,20 @@ export async function initDbIfNeeded() {
     end $$;
   `);
 
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='status') then
+        null;
+      else
+        alter table trips add column status text not null default 'pending';
+        raise notice 'Added status column to trips table';
+      end if;
+    end $$;
+  `);
+
   await exec(`create index if not exists idx_trips_driver_id on trips(driver_id);`);
+  await exec(`create index if not exists idx_trips_status on trips(status);`);
   await exec(`create index if not exists idx_trips_client_id on trips(client_id);`);
   await exec(`create index if not exists idx_trips_company_id on trips(company_id);`);
   await exec(`create index if not exists idx_trips_start_at on trips(start_at);`);
