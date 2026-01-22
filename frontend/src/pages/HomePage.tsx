@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { Button } from "../components/Button";
 
 export function HomePage() {
   const { user } = useAuth();
@@ -119,9 +118,12 @@ export function HomePage() {
         <div className="rounded-xl border border-slate-200 bg-white p-6">
           <h2 className="mb-4 text-xl font-semibold text-slate-900">Ações Rápidas</h2>
           <div className="flex flex-wrap gap-3">
-            <Button as={Link} to="/rides-funnel" variant="primary">
+            <Link
+              to="/rides-funnel"
+              className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            >
               Ver Minhas Corridas
-            </Button>
+            </Link>
           </div>
         </div>
       )}
@@ -131,16 +133,25 @@ export function HomePage() {
         <div className="rounded-xl border border-slate-200 bg-white p-6">
           <h2 className="mb-4 text-xl font-semibold text-slate-900">Ações Rápidas</h2>
           <div className="flex flex-wrap gap-3">
-            <Button as={Link} to="/dashboard" variant="primary">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            >
               Ver Dashboard
-            </Button>
-            <Button as={Link} to="/trips" variant="ghost">
+            </Link>
+            <Link
+              to="/trips"
+              className="inline-flex items-center justify-center rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            >
               Gerenciar Corridas
-            </Button>
+            </Link>
             {isAdmin && (
-              <Button as={Link} to="/users" variant="ghost">
+              <Link
+                to="/users"
+                className="inline-flex items-center justify-center rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              >
                 Gerenciar Usuários
-              </Button>
+              </Link>
             )}
           </div>
         </div>
