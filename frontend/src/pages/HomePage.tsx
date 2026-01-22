@@ -13,7 +13,7 @@ export function HomePage() {
           {
             to: "/rides-funnel",
             title: "Rides Funnel",
-            description: "Visualize e gerencie suas corridas",
+            description: "View and manage your rides",
             icon: "🚗",
           },
         ]
@@ -21,19 +21,19 @@ export function HomePage() {
           {
             to: "/dashboard",
             title: "Dashboard",
-            description: "Visão geral e análises do sistema",
+            description: "System overview and analytics",
             icon: "📊",
           },
           {
             to: "/trips",
             title: "Trips",
-            description: "Gerenciar todas as corridas",
+            description: "Manage all trips",
             icon: "📍",
           },
           {
             to: "/rides-funnel",
             title: "Rides Funnel",
-            description: "Funil de corridas",
+            description: "Rides funnel",
             icon: "🚗",
           },
         ]),
@@ -42,19 +42,19 @@ export function HomePage() {
           {
             to: "/drivers",
             title: "Drivers",
-            description: "Gerenciar motoristas",
+            description: "Manage drivers",
             icon: "👨‍✈️",
           },
           {
             to: "/clients",
             title: "Clients",
-            description: "Gerenciar clientes",
+            description: "Manage clients",
             icon: "👤",
           },
           {
             to: "/companies",
             title: "Companies",
-            description: "Gerenciar empresas",
+            description: "Manage companies",
             icon: "🏢",
           },
         ]
@@ -64,7 +64,7 @@ export function HomePage() {
           {
             to: "/users",
             title: "Users",
-            description: "Gerenciar usuários do sistema",
+            description: "Manage system users",
             icon: "👥",
           },
         ]
@@ -77,19 +77,19 @@ export function HomePage() {
       <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8">
         <div className="max-w-2xl">
           <h1 className="text-3xl font-bold text-slate-900">
-            Bem-vindo, {user?.name || "Usuário"}!
+            Welcome, {user?.name || "User"}!
           </h1>
           <p className="mt-2 text-lg text-slate-600">
             {isDriver
-              ? "Gerencie suas corridas e mantenha tudo organizado."
-              : "Acesse as funcionalidades do sistema através dos cards abaixo."}
+              ? "Manage your rides and keep everything organized."
+              : "Access system features through the cards below."}
           </p>
         </div>
       </div>
 
       {/* Quick Links Grid */}
       <div>
-        <h2 className="mb-4 text-xl font-semibold text-slate-900">Acesso Rápido</h2>
+        <h2 className="mb-4 text-xl font-semibold text-slate-900">Quick Access</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {quickLinks.map((link) => (
             <Link
@@ -116,13 +116,13 @@ export function HomePage() {
       {/* Quick Actions for Drivers */}
       {isDriver && (
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900">Ações Rápidas</h2>
+          <h2 className="mb-4 text-xl font-semibold text-slate-900">Quick Actions</h2>
           <div className="flex flex-wrap gap-3">
             <Link
               to="/rides-funnel"
               className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
             >
-              Ver Minhas Corridas
+              View My Rides
             </Link>
           </div>
         </div>
@@ -131,26 +131,26 @@ export function HomePage() {
       {/* Quick Actions for Admin/User */}
       {!isDriver && (
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900">Ações Rápidas</h2>
+          <h2 className="mb-4 text-xl font-semibold text-slate-900">Quick Actions</h2>
           <div className="flex flex-wrap gap-3">
             <Link
               to="/dashboard"
               className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
             >
-              Ver Dashboard
+              View Dashboard
             </Link>
             <Link
               to="/trips"
               className="inline-flex items-center justify-center rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
             >
-              Gerenciar Corridas
+              Manage Trips
             </Link>
             {isAdmin && (
               <Link
                 to="/users"
                 className="inline-flex items-center justify-center rounded-lg bg-transparent px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
               >
-                Gerenciar Usuários
+                Manage Users
               </Link>
             )}
           </div>
