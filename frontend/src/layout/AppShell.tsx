@@ -7,7 +7,7 @@ type NavItem = { to: string; label: string; adminOnly?: boolean; driverOnly?: bo
 
 const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", excludeDriver: true },
-  { to: "/rides-funnel", label: "Rides Funnel", driverOnly: true },
+  { to: "/rides-funnel", label: "Rides Funnel" },
   { to: "/trips", label: "Trips", excludeDriver: true },
   { to: "/drivers", label: "Drivers", excludeDriver: true },
   { to: "/clients", label: "Client", excludeDriver: true },
@@ -89,6 +89,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 if (item.adminOnly && !isAdmin) return false;
                 if (item.driverOnly && !isDriver) return false;
                 if (item.excludeDriver && isDriver) return false;
+                // Drivers only see Rides Funnel, admin and user see everything
+                if (isDriver && !item.driverOnly && item.to !== "/rides-funnel") return false;
                 return true;
               })
               .map((item) => (

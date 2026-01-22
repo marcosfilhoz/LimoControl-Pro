@@ -52,7 +52,7 @@ router.get("/", (req, res) => {
     }
     
     const filtered = await store.trips.list({
-      createdByUserId: auth?.role === "admin" ? undefined : auth?.userId,
+      createdByUserId: auth?.role === "admin" || auth?.role === "user" ? undefined : auth?.userId,
       driverId: filterDriverId,
       clientId: clientId ? String(clientId) : undefined,
       companyId: companyId ? String(companyId) : undefined,
