@@ -99,8 +99,11 @@ export function RidesFunnelPage() {
           setCompanies(co);
         }
       })
-      .catch(() => {
-        if (alive) setError("Could not load rides.");
+      .catch((e: any) => {
+        if (alive) {
+          console.error("Error loading rides:", e);
+          setError(e?.body?.error || "Could not load rides.");
+        }
       })
       .finally(() => {
         if (alive) setLoading(false);

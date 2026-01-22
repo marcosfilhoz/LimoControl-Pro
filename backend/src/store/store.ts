@@ -52,6 +52,27 @@ export const store = {
       };
     },
 
+    async findById(id: string): Promise<User | null> {
+      if (!pool) {
+        return memUsers.find((u) => u.id === id) || null;
+      }
+      const res = await pool.query(
+        `select id, name, email, password_hash, role, driver_id, created_at from users where id=$1 limit 1`,
+        [id]
+      );
+      const r = res.rows[0];
+      if (!r) return null;
+      return {
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        passwordHash: r.password_hash,
+        role: r.role as Role,
+        driverId: r.driver_id ?? undefined,
+        createdAt: toIso(r.created_at),
+      };
+    },
+
     async listSafe() {
       if (!pool) return memUsers.map(safeUser);
       const res = await pool.query(`select id, name, email, role, driver_id, created_at from users order by created_at desc`);
