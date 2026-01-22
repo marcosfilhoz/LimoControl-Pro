@@ -57,15 +57,23 @@ router.get("/", (req, res) => {
       }
     }
     
+    // For drivers, don't filter by createdByUserId - they should see all trips for their linked driver
+    // For admin and user, don't filter by createdByUserId either (they see all trips)
+    // Only filter by createdByUserId for non-admin, non-user, non-driver roles (shouldn't happen)
+    const filterCreatedByUserId = 
+      auth?.role === "admin" || auth?.role === "user" || auth?.role === "driver" 
+        ? undefined 
+        : auth?.userId;
+    
     console.log(`[Trips] Listing trips with filters:`, {
       role: auth?.role,
       userId: auth?.userId,
       filterDriverId,
-      createdByUserId: auth?.role === "admin" || auth?.role === "user" ? undefined : auth?.userId,
+      filterCreatedByUserId,
     });
     
     const filtered = await store.trips.list({
-      createdByUserId: auth?.role === "admin" || auth?.role === "user" ? undefined : auth?.userId,
+      createdByUserId: filterCreatedByUserId,
       driverId: filterDriverId,
       clientId: clientId ? String(clientId) : undefined,
       companyId: companyId ? String(companyId) : undefined,
