@@ -204,14 +204,8 @@ export function RidesFunnelPage() {
             <option value="all">All</option>
           </select>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-700">From:</label>
-          <DateFilterInput value={filterFrom} onChange={setFilterFrom} />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-700">To:</label>
-          <DateFilterInput value={filterTo} onChange={setFilterTo} />
-        </div>
+        <DateFilterInput label="From" value={filterFrom} onChange={setFilterFrom} />
+        <DateFilterInput label="To" value={filterTo} onChange={setFilterTo} />
         {(filterFrom || filterTo) && (
           <Button variant="ghost" onClick={() => { setFilterFrom(""); setFilterTo(""); }}>
             Clear dates
