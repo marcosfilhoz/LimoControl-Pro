@@ -540,6 +540,7 @@ export const store = {
       if (filter.driverId) {
         params.push(filter.driverId);
         where.push(`driver_id=$${params.length}`);
+        console.log(`[Store] Filtering trips by driverId: ${filter.driverId}`);
       }
       if (filter.clientId) {
         params.push(filter.clientId);
@@ -569,7 +570,9 @@ export const store = {
         `select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes, created_at from trips` +
         (where.length ? ` where ${where.join(" and ")}` : "") +
         ` order by start_at desc`;
+      console.log(`[Store] Executing query: ${sql}`, params);
       const res = await pool.query(sql, params);
+      console.log(`[Store] Query returned ${res.rowCount} rows`);
       return res.rows.map((r: any) => ({
         id: r.id,
         createdByUserId: r.created_by_user_id,

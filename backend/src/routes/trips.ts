@@ -44,12 +44,14 @@ router.get("/", (req, res) => {
     // If user is a driver, filter by their linked driver
     let filterDriverId = driverId ? String(driverId) : undefined;
     if (auth?.role === "driver" && !filterDriverId) {
+      console.log(`[Trips] Looking up driver user: ${auth.userId}`);
       const user = await store.users.findById(auth.userId);
+      console.log(`[Trips] Found user:`, user ? { id: user.id, name: user.name, role: user.role, driverId: user.driverId } : null);
       if (user?.driverId) {
         filterDriverId = user.driverId;
-        console.log(`[Trips] Driver user ${auth.userId} linked to driver ${filterDriverId}`);
+        console.log(`[Trips] Driver user ${auth.userId} (${user.name}) linked to driver ${filterDriverId}`);
       } else {
-        console.log(`[Trips] Driver user ${auth.userId} has no driverId linked`);
+        console.log(`[Trips] Driver user ${auth.userId} has no driverId linked. User data:`, user);
         // If driver user has no driverId linked, return empty array
         return res.json([]);
       }
@@ -82,6 +84,11 @@ router.get("/", (req, res) => {
           : undefined,
     });
     console.log(`[Trips] Found ${filtered.length} trips`);
+    if (filtered.length === 0 && filterDriverId) {
+      // Debug: check if there are any trips for this driver at all
+      const allTripsForDriver = await store.trips.list({ driverId: filterDriverId });
+      console.log(`[Trips] Debug: Total trips for driver ${filterDriverId}: ${allTripsForDriver.length}`);
+    }
     return res.json(filtered);
   })().catch((err) => {
     console.error(err);
