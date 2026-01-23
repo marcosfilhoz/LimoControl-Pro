@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 import { DateFilterInput } from "../components/DateFilterInput";
+import { Modal } from "../components/Modal";
 import { api } from "../lib/api";
 
 type Trip = {
@@ -74,6 +75,75 @@ function getStatusLabel(status: Trip["status"]): string {
   }
 }
 
+function formatDuration(minutes: number): string {
+  if (minutes < 60) {
+    return `${Math.round(minutes)} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  return `${hours}h ${mins}min`;
+}
+
+function calculateTripDuration(trip: Trip, currentTime: Date): { duration: number; formatted: string } {
+  if (trip.status === "completed" && trip.finishedAt && trip.startedAt) {
+    const start = new Date(trip.startedAt).getTime();
+    const end = new Date(trip.finishedAt).getTime();
+    const minutes = (end - start) / (1000 * 60);
+    return { duration: minutes, formatted: formatDuration(minutes) };
+  } else if (trip.startedAt) {
+    const start = new Date(trip.startedAt).getTime();
+    const now = currentTime.getTime();
+    const minutes = (now - start) / (1000 * 60);
+    return { duration: minutes, formatted: formatDuration(minutes) };
+  }
+  return { duration: 0, formatted: "0 min" };
+}
+
+function calculateActiveTime(trip: Trip, currentTime: Date): { activeTime: number; stopTime: number; formatted: { active: string; stop: string } } {
+  if (!trip.startedAt) {
+    return { activeTime: 0, stopTime: 0, formatted: { active: "0 min", stop: "0 min" } };
+  }
+
+  const start = new Date(trip.startedAt).getTime();
+  const now = currentTime.getTime();
+  const totalMinutes = (now - start) / (1000 * 60);
+
+  // Since we don't have exact stop start/end times, we can only estimate
+  // If currently on stop, we show that it's in stop status
+  // For completed trips, we can't calculate stop time without history
+  if (trip.status === "on_stop") {
+    // Estimate: assume it's been on stop for some time, but we can't calculate exactly
+    return {
+      activeTime: totalMinutes,
+      stopTime: 0, // Can't calculate without stop start time
+      formatted: {
+        active: formatDuration(totalMinutes),
+        stop: "Currently on stop (exact time unavailable)",
+      },
+    };
+  } else if (trip.status === "completed" && trip.finishedAt) {
+    const end = new Date(trip.finishedAt).getTime();
+    const completedMinutes = (end - start) / (1000 * 60);
+    return {
+      activeTime: completedMinutes,
+      stopTime: 0, // Can't calculate without stop history
+      formatted: {
+        active: formatDuration(completedMinutes),
+        stop: "N/A (no stop history)",
+      },
+    };
+  } else {
+    return {
+      activeTime: totalMinutes,
+      stopTime: 0,
+      formatted: {
+        active: formatDuration(totalMinutes),
+        stop: "0 min",
+      },
+    };
+  }
+}
+
 export function DriverTripsPage() {
   const { user } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -83,6 +153,8 @@ export function DriverTripsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState<Set<string>>(new Set());
+  const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
@@ -116,6 +188,14 @@ export function DriverTripsPage() {
     return () => {
       alive = false;
     };
+  }, []);
+
+  // Update current time every second for real-time duration calculations
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const filteredTrips = useMemo(() => {
@@ -439,6 +519,13 @@ export function DriverTripsPage() {
 
                   {/* Action buttons */}
                   <div className="flex flex-col gap-2 md:min-w-[140px]">
+                    <Button
+                      onClick={() => setDetailsOpen(trip.id)}
+                      variant="ghost"
+                      className="w-full"
+                    >
+                      Details
+                    </Button>
                     {trip.status === "pending" && (
                       <Button
                         onClick={() => updateStatus(trip.id, "start")}
@@ -495,6 +582,178 @@ export function DriverTripsPage() {
           </div>
         )}
       </div>
+
+      {/* Details Modal */}
+      {detailsOpen && (() => {
+        const trip = trips.find((t) => t.id === detailsOpen);
+        if (!trip) return null;
+        
+        const tripDuration = calculateTripDuration(trip, currentTime);
+        const timeBreakdown = calculateActiveTime(trip, currentTime);
+        const scheduledDuration = trip.durationMinutes;
+        
+        return (
+          <Modal
+            title="Trip Details"
+            open={true}
+            onClose={() => setDetailsOpen(null)}
+          >
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs font-medium text-slate-600">Status</div>
+                  <div className="mt-1">
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeColor(trip.status)}`}>
+                      {getStatusLabel(trip.status)}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-slate-600">Trip Type</div>
+                  <div className="mt-1 text-sm font-medium text-slate-900">
+                    {trip.tripType === "hourly" ? "Hourly" : "Transfer"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 pt-4">
+                <div className="text-sm font-semibold text-slate-900 mb-3">Duration Information</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-600">Scheduled Duration:</span>
+                    <span className="text-sm font-medium text-slate-900">{formatDuration(scheduledDuration)}</span>
+                  </div>
+                  {trip.startedAt && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-600">Actual Duration:</span>
+                        <span className="text-sm font-medium text-slate-900">{tripDuration.formatted}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-600">Active Time:</span>
+                        <span className="text-sm font-medium text-slate-900">{timeBreakdown.formatted.active}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-600">Stop Time:</span>
+                        <span className={`text-sm font-medium ${trip.status === "on_stop" ? "text-orange-600" : "text-slate-900"}`}>
+                          {timeBreakdown.formatted.stop}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {trip.status === "completed" && trip.finishedAt && trip.startedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-600">Time Difference:</span>
+                      <span className={`text-sm font-medium ${Math.abs(tripDuration.duration - scheduledDuration) > 10 ? "text-orange-600" : "text-slate-900"}`}>
+                        {tripDuration.duration > scheduledDuration 
+                          ? `+${formatDuration(tripDuration.duration - scheduledDuration)}`
+                          : `-${formatDuration(scheduledDuration - tripDuration.duration)}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 pt-4">
+                <div className="text-sm font-semibold text-slate-900 mb-3">Timeline</div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-600">Scheduled Start:</span>
+                    <span className="text-sm font-medium text-slate-900">{formatDateTime(trip.startAt)}</span>
+                  </div>
+                  {trip.startedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-600">Actual Start:</span>
+                      <span className="text-sm font-medium text-slate-900">{formatDateTime(trip.startedAt)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-600">Scheduled End:</span>
+                    <span className="text-sm font-medium text-slate-900">{formatDateTime(trip.endAt)}</span>
+                  </div>
+                  {trip.finishedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-600">Actual End:</span>
+                      <span className="text-sm font-medium text-slate-900">{formatDateTime(trip.finishedAt)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 pt-4">
+                <div className="text-sm font-semibold text-slate-900 mb-3">Route Information</div>
+                <div className="space-y-2">
+                  <div>
+                    <div className="text-xs text-slate-600 mb-1">Origin</div>
+                    <div className="text-sm font-medium text-slate-900">{trip.origin}</div>
+                  </div>
+                  {trip.stop && (
+                    <div>
+                      <div className="text-xs text-slate-600 mb-1">Stop</div>
+                      <div className="text-sm font-medium text-slate-900">{trip.stop}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs text-slate-600 mb-1">Destination</div>
+                    <div className="text-sm font-medium text-slate-900">{trip.destination}</div>
+                  </div>
+                  <div className="flex justify-between pt-2">
+                    <span className="text-sm text-slate-600">Distance:</span>
+                    <span className="text-sm font-medium text-slate-900">{trip.miles} miles</span>
+                  </div>
+                </div>
+              </div>
+
+              {(trip.vehicleType || trip.cnf || trip.flightNumber || trip.meetGreet || trip.clientPhone) && (
+                <div className="border-t border-slate-200 pt-4">
+                  <div className="text-sm font-semibold text-slate-900 mb-3">Additional Information</div>
+                  <div className="space-y-2">
+                    {trip.vehicleType && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-600">Vehicle Type:</span>
+                        <span className="text-sm font-medium text-slate-900">{trip.vehicleType}</span>
+                      </div>
+                    )}
+                    {trip.cnf && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-600">CNF:</span>
+                        <span className="text-sm font-medium text-slate-900">{trip.cnf}</span>
+                      </div>
+                    )}
+                    {trip.flightNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-600">Flight Number:</span>
+                        <span className="text-sm font-medium text-slate-900">{trip.flightNumber}</span>
+                      </div>
+                    )}
+                    {trip.meetGreet && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-600">Meet & Greet:</span>
+                        <span className="text-sm font-medium text-slate-900">{trip.meetGreet}</span>
+                      </div>
+                    )}
+                    {trip.clientPhone && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-600">Client Phone:</span>
+                        <span className="text-sm font-medium text-slate-900">{trip.clientPhone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {trip.notes && (
+                <div className="border-t border-slate-200 pt-4">
+                  <div className="text-sm font-semibold text-slate-900 mb-2">Notes</div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-sm text-slate-700">{trip.notes}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
