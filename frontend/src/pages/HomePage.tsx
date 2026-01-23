@@ -12,7 +12,7 @@ export function HomePage() {
       ? [
           {
             to: "/rides-funnel",
-            title: "Rides Funnel",
+            title: "Driver Trips",
             description: "View and manage your rides",
             icon: "🚗",
           },
@@ -32,8 +32,8 @@ export function HomePage() {
           },
           {
             to: "/rides-funnel",
-            title: "Rides Funnel",
-            description: "Rides funnel",
+            title: "Driver Trips",
+            description: "Driver trips",
             icon: "🚗",
           },
         ]),

@@ -8,7 +8,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
-import { RidesFunnelPage } from "./pages/RidesFunnelPage";
+import { DriverTripsPage } from "./pages/RidesFunnelPage";
 import { TripsPage } from "./pages/TripsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { CompaniesPage } from "./pages/CompaniesPage";
@@ -30,7 +30,7 @@ export function App() {
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/rides-funnel" element={<RidesFunnelPage />} />
+                  <Route path="/rides-funnel" element={<DriverTripsPage />} />
                   <Route path="/trips" element={<TripsPage />} />
                   <Route path="/drivers" element={<DriversPage />} />
                   <Route path="/clients" element={<ClientsPage />} />

@@ -74,7 +74,7 @@ function getStatusLabel(status: Trip["status"]): string {
   }
 }
 
-export function RidesFunnelPage() {
+export function DriverTripsPage() {
   const { user } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [drivers, setDrivers] = useState<Array<{ id: string; name: string; active?: boolean }>>([]);
@@ -206,7 +206,7 @@ export function RidesFunnelPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-xl font-semibold">Rides Funnel</div>
+          <div className="text-xl font-semibold">Driver Trips</div>
           <div className="text-sm text-slate-600">
             Showing {filteredTrips.length}/{trips.length} rides
             {user?.role === "driver" && " (your rides only)"}
