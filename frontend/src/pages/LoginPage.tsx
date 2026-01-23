@@ -99,7 +99,7 @@ export function LoginPage() {
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
                 />
-                Save email and password on this device
+                Save email and password on this devices
               </label>
 
               {error ? (
@@ -113,8 +113,8 @@ export function LoginPage() {
               </Button>
 
               <div className="text-xs text-slate-500">
-                Developer: <span className="font-mono">Marcos</span> /{" "}
-                <span className="font-mono">Filho</span>
+                Developer: <span className="font-mono">Versão 1.0.0.10</span> - {" "}
+                <span className="font-mono">PRO</span>
               </div>
             </form>
           </div>
