@@ -113,8 +113,9 @@ export function LoginPage() {
               </Button>
 
               <div className="text-xs text-slate-500">
-                Developed by: MF Consultoria e Sistemas <span className="font-mono">Versão 1.0.10</span> - {" "}
-                <span className="font-mono">Suporte +55(62)99970-1204</span>
+                Developed by <span className="font-mono">MF Consultoria e Sistemas</span>{" "}
+                <span className="font-mono">Version 1.0.10</span>{" "}
+                <span className="font-mono">Helpdesk +55(62)99970-1204</span>
               </div>
             </form>
           </div>
