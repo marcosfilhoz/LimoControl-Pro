@@ -696,14 +696,14 @@ export function TripsPage() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Input
-              label="Hora inicial"
+              label="Passager On Board"
               type="time"
               value={hourlyStartTime}
               disabled={tripType !== "hourly"}
               onChange={(e) => setHourlyStartTime(e.target.value)}
             />
             <Input
-              label="Hora final"
+              label="Passager Drop Off"
               type="time"
               value={hourlyEndTime}
               disabled={tripType !== "hourly"}
