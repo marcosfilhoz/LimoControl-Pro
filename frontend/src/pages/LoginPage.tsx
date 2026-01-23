@@ -10,7 +10,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const saved = getSavedCreds();
   const [email, setEmail] = useState(saved?.email || "admin@limo.local");
-  const [password, setPassword] = useState(saved?.password || "admin123");
+  const [password, setPassword] = useState(saved?.password || "admin");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(saved?.remember || false);
   const [error, setError] = useState<string | null>(null);
@@ -113,8 +113,8 @@ export function LoginPage() {
               </Button>
 
               <div className="text-xs text-slate-500">
-                Developer: <span className="font-mono">Versão 1.0.0.10</span> - {" "}
-                <span className="font-mono">PRO</span>
+                Developed by: MF Consultoria e Sistemas <span className="font-mono">Versão 1.0.10</span> - {" "}
+                <span className="font-mono">Suporte +55(62)99970-1204</span>
               </div>
             </form>
           </div>
