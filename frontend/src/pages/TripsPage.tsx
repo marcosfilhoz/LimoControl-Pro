@@ -1074,149 +1074,109 @@ function exportTripPdf(
   const footerPhone = formatUsPhone(refs.footer?.phone || "");
 
   if (type === "client") {
-    // Client PDF - Trip Confirmation with Vehicle Details
-    doc.setFontSize(20);
+    // Client PDF - Trip Confirmation with Vehicle Details in table format
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("Trip Confirmation", left, top);
 
-    doc.setFontSize(12);
+    // CNF Number
+    doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`CNF: ${cnf}`, left, top + 25);
+    doc.text(`CNF: ${cnf}`, left, top + 20);
 
-    let currentY = top + 50;
+    // Prepare table data for client PDF
+    const clientTableData: string[][] = [
+      ["Date", formatDate(trip.startAt)],
+      ["Time", formatTime(trip.startAt)],
+      ["Service Type", service],
+    ];
 
-    // Client Information Section
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("Client Information", left, currentY);
-    currentY += 20;
-
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Name: ${client}`, left, currentY);
-    currentY += 15;
-    if (phone !== "—") {
-      doc.text(`Phone: ${phone}`, left, currentY);
-      currentY += 15;
-    }
-
-    currentY += 10;
-
-    // Trip Details Section
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("Trip Details", left, currentY);
-    currentY += 20;
-
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Date: ${formatDate(trip.startAt)}`, left, currentY);
-    currentY += 15;
-    doc.text(`Time: ${formatTime(trip.startAt)}`, left, currentY);
-    currentY += 15;
-    doc.text(`Service: ${service}`, left, currentY);
-    currentY += 15;
     if (hourlyTime !== "—") {
-      doc.text(`Duration: ${hourlyTime}`, left, currentY);
-      currentY += 15;
+      clientTableData.push(["Duration", hourlyTime]);
     }
-    doc.text(`Pickup: ${trip.origin}`, left, currentY);
-    currentY += 15;
-    doc.text(`Dropoff: ${trip.destination}`, left, currentY);
-    currentY += 15;
+
+    clientTableData.push(
+      ["Client Name", client],
+      ["Phone Number", phone],
+      ["Pickup Address", trip.origin],
+      ["Dropoff Address", trip.destination],
+    );
+
     if (trip.stop) {
-      doc.text(`Stop: ${trip.stop}`, left, currentY);
-      currentY += 15;
+      clientTableData.push(["Stop", trip.stop]);
     }
+
     if (trip.flightNumber) {
-      doc.text(`Flight Number: ${trip.flightNumber}`, left, currentY);
-      currentY += 15;
+      clientTableData.push(["Flight Number", trip.flightNumber]);
     }
+
     if (meetGreet !== "—") {
-      doc.text(`Meet & Greet: ${meetGreet}`, left, currentY);
-      currentY += 15;
+      clientTableData.push(["Meet & Greet", meetGreet]);
     }
 
-    currentY += 10;
-
-    // Vehicle Information Section (highlighted)
+    // Vehicle Information (highlighted section)
     if (vehicleData) {
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("Vehicle Information", left, currentY);
-      currentY += 20;
-
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      if (vehicleData.name) {
-        doc.text(`Vehicle: ${vehicleData.name}`, left, currentY);
-        currentY += 15;
-      }
+      const vehicleInfo: string[] = [];
+      if (vehicleData.name) vehicleInfo.push(vehicleData.name);
       if (vehicleData.brand || vehicleData.model) {
         const brandModel = [vehicleData.brand, vehicleData.model].filter(Boolean).join(" ");
-        doc.text(`Brand/Model: ${brandModel}`, left, currentY);
-        currentY += 15;
+        vehicleInfo.push(brandModel);
       }
-      if (vehicleData.year) {
-        doc.text(`Year: ${vehicleData.year}`, left, currentY);
-        currentY += 15;
-      }
-      if (vehicleData.plate) {
-        doc.text(`License Plate: ${vehicleData.plate}`, left, currentY);
-        currentY += 15;
-      }
-      if (vehicleType !== "—") {
-        doc.text(`Type: ${vehicleType}`, left, currentY);
-        currentY += 15;
-      }
-    } else if (vehicle !== "—") {
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("Vehicle Information", left, currentY);
-      currentY += 20;
+      if (vehicleData.year) vehicleInfo.push(`Year: ${vehicleData.year}`);
+      if (vehicleData.plate) vehicleInfo.push(`Plate: ${vehicleData.plate}`);
+      if (vehicleType !== "—") vehicleInfo.push(`Type: ${vehicleType}`);
 
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Vehicle: ${vehicle}`, left, currentY);
-      currentY += 15;
+      clientTableData.push(["Vehicle", vehicleInfo.join(" | ")]);
+    } else if (vehicle !== "—") {
+      clientTableData.push(["Vehicle", vehicle]);
       if (vehicleType !== "—") {
-        doc.text(`Type: ${vehicleType}`, left, currentY);
-        currentY += 15;
+        clientTableData.push(["Vehicle Type", vehicleType]);
       }
     }
 
-    currentY += 10;
+    clientTableData.push(
+      ["Driver", driver],
+      ["Total Amount", `$${trip.price.toFixed(2)}`],
+    );
 
-    // Driver Information
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("Driver", left, currentY);
-    currentY += 20;
+    // Create table
+    autoTable(doc, {
+      startY: top + 35,
+      head: [["Field", "Value"]],
+      body: clientTableData,
+      theme: "grid",
+      headStyles: {
+        fillColor: [51, 51, 51],
+        textColor: 255,
+        fontStyle: "bold",
+        fontSize: 10,
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [0, 0, 0],
+      },
+      columnStyles: {
+        0: { cellWidth: 120, fontStyle: "bold" },
+        1: { cellWidth: "auto" },
+      },
+      styles: {
+        cellPadding: 5,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.5,
+      },
+      margin: { left: left, right: left },
+    });
 
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Name: ${driver}`, left, currentY);
-    currentY += 15;
-
-    currentY += 10;
-
-    // Amount
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Total Amount: $${trip.price.toFixed(2)}`, left, currentY);
-    currentY += 20;
-
-    // Notes if available
+    // Add notes if available
     if (trip.notes && trip.notes.trim()) {
-      currentY += 10;
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("Notes:", left, currentY);
-      currentY += 15;
+      const finalY = (doc as any).lastAutoTable.finalY || top + 200;
       doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Notes:", left, finalY + 20);
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
       const notesLines = doc.splitTextToSize(trip.notes.trim(), doc.internal.pageSize.getWidth() - left * 2);
-      doc.text(notesLines, left, currentY);
+      doc.text(notesLines, left, finalY + 35);
     }
 
     // Footer
