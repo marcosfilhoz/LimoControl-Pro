@@ -1028,8 +1028,8 @@ function exportTripPdf(
         imgFormat = "PNG";
       }
 
-      const logoHeight = 40;
-      const maxLogoWidth = 150; // Max width to prevent logo from being too wide
+      const logoHeight = 55;
+      const maxLogoWidth = 200; // Max width to prevent logo from being too wide
       
       // Create image element to get dimensions
       const img = document.createElement("img");
