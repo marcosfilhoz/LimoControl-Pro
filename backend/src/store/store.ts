@@ -136,9 +136,11 @@ export const store = {
       if (!pool) {
         const idx = memUsers.findIndex((u) => u.id === id);
         if (idx === -1) return { error: "User not found" as const };
-        const updateData: Partial<User> = { ...input };
-        if (input.driverId === null) {
-          updateData.driverId = undefined;
+        const updateData: Partial<User> = {};
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.role !== undefined) updateData.role = input.role;
+        if (input.driverId !== undefined) {
+          updateData.driverId = input.driverId === null ? undefined : input.driverId;
         }
         memUsers[idx] = { ...memUsers[idx], ...updateData };
         return { user: safeUser(memUsers[idx]) };
