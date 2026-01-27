@@ -39,7 +39,13 @@ type Driver = { id: string; name: string };
 type Client = { id: string; name: string; phone?: string; address?: string; active: boolean };
 type Company = { id: string; name: string };
 type Vehicle = { id: string; name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string; active: boolean };
-type Settings = { enabledModules: string[]; pdfCompany?: string | null; pdfEmail?: string | null; pdfPhone?: string | null };
+type Settings = {
+  enabledModules: string[];
+  pdfCompany?: string | null;
+  pdfEmail?: string | null;
+  pdfPhone?: string | null;
+  logoDataUrl?: string | null;
+};
 
 export function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -906,16 +912,38 @@ export function TripsPage() {
                     clientById,
                     companyById,
                     vehicleById,
+                    logoDataUrl: settings?.logoDataUrl || null,
                     footer: {
                       company: settings?.pdfCompany || "",
                       email: settings?.pdfEmail || "",
                       phone: settings?.pdfPhone || "",
                     },
-                  })
+                  }, "driver")
                 }
               >
-                Export PDF
+                Driver PDF
               </button>
+              {vehiclesEnabled ? (
+                <button
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+                  onClick={() =>
+                    exportTripPdf(detailsTrip, {
+                      driverById,
+                      clientById,
+                      companyById,
+                      vehicleById,
+                      logoDataUrl: settings?.logoDataUrl || null,
+                      footer: {
+                        company: settings?.pdfCompany || "",
+                        email: settings?.pdfEmail || "",
+                        phone: settings?.pdfPhone || "",
+                      },
+                    }, "client")
+                  }
+                >
+                  Client PDF
+                </button>
+              ) : null}
               <button
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
                 onClick={() => openEdit(detailsTrip)}
@@ -980,17 +1008,57 @@ function exportTripPdf(
     clientById: Map<string, string>;
     companyById: Map<string, string>;
     vehicleById: Map<string, Vehicle>;
+    logoDataUrl?: string | null;
     footer?: { company?: string; email?: string; phone?: string };
   },
+  type: "driver" | "client" = "driver",
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const left = 40;
-  const top = 40;
+  let top = 40;
+
+  // Add logo if available
+  if (refs.logoDataUrl) {
+    try {
+      // Determine image format from data URL
+      let imgFormat: "PNG" | "JPEG" | "JPG" = "PNG";
+      if (refs.logoDataUrl.startsWith("data:image/jpeg") || refs.logoDataUrl.startsWith("data:image/jpg")) {
+        imgFormat = "JPEG";
+      } else if (refs.logoDataUrl.startsWith("data:image/png")) {
+        imgFormat = "PNG";
+      }
+
+      const logoHeight = 40;
+      const maxLogoWidth = 150; // Max width to prevent logo from being too wide
+      
+      // Create image element to get dimensions
+      const img = document.createElement("img");
+      img.src = refs.logoDataUrl;
+      
+      // Use default dimensions, jsPDF will handle scaling
+      let logoWidth = logoHeight * 1.5; // Default aspect ratio
+      
+      // Try to get actual dimensions if image is already loaded
+      if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+        logoWidth = (img.naturalWidth / img.naturalHeight) * logoHeight;
+        if (logoWidth > maxLogoWidth) {
+          logoWidth = maxLogoWidth;
+        }
+      }
+
+      doc.addImage(refs.logoDataUrl, imgFormat, left, top, logoWidth, logoHeight);
+      top += logoHeight + 15;
+    } catch (e) {
+      console.error("Error loading logo:", e);
+      // Continue without logo if there's an error
+    }
+  }
 
   const driver = refs.driverById.get(trip.driverId) || trip.driverId;
   const client = trip.clientId ? refs.clientById.get(trip.clientId) || trip.clientId : "—";
   const company = refs.companyById.get(trip.companyId) || trip.companyId;
   const vehicle = trip.vehicleId ? formatVehicleLabel(refs.vehicleById.get(trip.vehicleId)) || trip.vehicleId : "—";
+  const vehicleData = trip.vehicleId ? refs.vehicleById.get(trip.vehicleId) : null;
   const vehicleType = trip.vehicleType ? String(trip.vehicleType) : "—";
   const meetGreet = meetGreetLabel(trip.meetGreet);
   const phone = trip.clientPhone ? String(trip.clientPhone) : "—";
@@ -1005,6 +1073,167 @@ function exportTripPdf(
   const footerEmail = (refs.footer?.email || "").trim();
   const footerPhone = formatUsPhone(refs.footer?.phone || "");
 
+  if (type === "client") {
+    // Client PDF - Trip Confirmation with Vehicle Details
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("Trip Confirmation", left, top);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`CNF: ${cnf}`, left, top + 25);
+
+    let currentY = top + 50;
+
+    // Client Information Section
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Client Information", left, currentY);
+    currentY += 20;
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name: ${client}`, left, currentY);
+    currentY += 15;
+    if (phone !== "—") {
+      doc.text(`Phone: ${phone}`, left, currentY);
+      currentY += 15;
+    }
+
+    currentY += 10;
+
+    // Trip Details Section
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Trip Details", left, currentY);
+    currentY += 20;
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Date: ${formatDate(trip.startAt)}`, left, currentY);
+    currentY += 15;
+    doc.text(`Time: ${formatTime(trip.startAt)}`, left, currentY);
+    currentY += 15;
+    doc.text(`Service: ${service}`, left, currentY);
+    currentY += 15;
+    if (hourlyTime !== "—") {
+      doc.text(`Duration: ${hourlyTime}`, left, currentY);
+      currentY += 15;
+    }
+    doc.text(`Pickup: ${trip.origin}`, left, currentY);
+    currentY += 15;
+    doc.text(`Dropoff: ${trip.destination}`, left, currentY);
+    currentY += 15;
+    if (trip.stop) {
+      doc.text(`Stop: ${trip.stop}`, left, currentY);
+      currentY += 15;
+    }
+    if (trip.flightNumber) {
+      doc.text(`Flight Number: ${trip.flightNumber}`, left, currentY);
+      currentY += 15;
+    }
+    if (meetGreet !== "—") {
+      doc.text(`Meet & Greet: ${meetGreet}`, left, currentY);
+      currentY += 15;
+    }
+
+    currentY += 10;
+
+    // Vehicle Information Section (highlighted)
+    if (vehicleData) {
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Vehicle Information", left, currentY);
+      currentY += 20;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      if (vehicleData.name) {
+        doc.text(`Vehicle: ${vehicleData.name}`, left, currentY);
+        currentY += 15;
+      }
+      if (vehicleData.brand || vehicleData.model) {
+        const brandModel = [vehicleData.brand, vehicleData.model].filter(Boolean).join(" ");
+        doc.text(`Brand/Model: ${brandModel}`, left, currentY);
+        currentY += 15;
+      }
+      if (vehicleData.year) {
+        doc.text(`Year: ${vehicleData.year}`, left, currentY);
+        currentY += 15;
+      }
+      if (vehicleData.plate) {
+        doc.text(`License Plate: ${vehicleData.plate}`, left, currentY);
+        currentY += 15;
+      }
+      if (vehicleType !== "—") {
+        doc.text(`Type: ${vehicleType}`, left, currentY);
+        currentY += 15;
+      }
+    } else if (vehicle !== "—") {
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Vehicle Information", left, currentY);
+      currentY += 20;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Vehicle: ${vehicle}`, left, currentY);
+      currentY += 15;
+      if (vehicleType !== "—") {
+        doc.text(`Type: ${vehicleType}`, left, currentY);
+        currentY += 15;
+      }
+    }
+
+    currentY += 10;
+
+    // Driver Information
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Driver", left, currentY);
+    currentY += 20;
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name: ${driver}`, left, currentY);
+    currentY += 15;
+
+    currentY += 10;
+
+    // Amount
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total Amount: $${trip.price.toFixed(2)}`, left, currentY);
+    currentY += 20;
+
+    // Notes if available
+    if (trip.notes && trip.notes.trim()) {
+      currentY += 10;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Notes:", left, currentY);
+      currentY += 15;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const notesLines = doc.splitTextToSize(trip.notes.trim(), doc.internal.pageSize.getWidth() - left * 2);
+      doc.text(notesLines, left, currentY);
+    }
+
+    // Footer
+    const footerText = [footerCompany, footerEmail, footerPhone].filter(Boolean).join(" · ");
+    if (footerText) {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(footerText, left, doc.internal.pageSize.getHeight() - 30);
+    }
+
+    const fileSafeDate = new Date(trip.startAt).toISOString().slice(0, 10);
+    const fileName = trip.cnf ? `trip_confirmation_${trip.cnf}_${fileSafeDate}.pdf` : `trip_confirmation_${fileSafeDate}_${trip.id}.pdf`;
+    doc.save(fileName);
+    return;
+  }
+
+  // Driver PDF - Original detailed version
   // Title
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
