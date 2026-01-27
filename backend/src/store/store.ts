@@ -136,7 +136,11 @@ export const store = {
       if (!pool) {
         const idx = memUsers.findIndex((u) => u.id === id);
         if (idx === -1) return { error: "User not found" as const };
-        memUsers[idx] = { ...memUsers[idx], ...input };
+        const updateData: Partial<User> = { ...input };
+        if (input.driverId === null) {
+          updateData.driverId = undefined;
+        }
+        memUsers[idx] = { ...memUsers[idx], ...updateData };
         return { user: safeUser(memUsers[idx]) };
       }
       // Build update query dynamically based on what fields are provided
