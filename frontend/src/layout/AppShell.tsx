@@ -22,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
   const isDriver = user?.role === "driver";
+  const isDev = user?.role === "dev";
   const initials = (user?.name || user?.email || "?")
     .split(" ")
     .filter(Boolean)
@@ -68,6 +69,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
               </div>
+            ) : null}
+            {isDev ? (
+              <Link
+                to="/parameters"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+                aria-label="Parâmetros"
+                title="Parâmetros"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 0 0 0-7Zm9.5 3.5c0-.6-.07-1.2-.2-1.76l2-1.55l-2-3.46l-2.43.86c-.5-.4-1.05-.74-1.65-1.01L14.5 1h-4l-.72 2.08c-.6.27-1.15.6-1.65 1.01l-2.43-.86l-2 3.46l2 1.55c-.13.56-.2 1.16-.2 1.76s.07 1.2.2 1.76l-2 1.55l2 3.46l2.43-.86c.5.4 1.05.74 1.65 1.01L10.5 23h4l.72-2.08c.6-.27 1.15-.6 1.65-1.01l2.43.86l2-3.46l-2-1.55c.13-.56.2-1.16.2-1.76Zm-9.5 5.5a5.5 5.5 0 1 1 0-11a5.5 5.5 0 0 1 0 11Z"
+                  />
+                </svg>
+              </Link>
             ) : null}
             <Button
               variant="ghost"

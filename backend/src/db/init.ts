@@ -65,6 +65,23 @@ export async function initDbIfNeeded() {
   `);
 
   await exec(`
+    create table if not exists app_settings (
+      id text primary key,
+      owner_company_id text references companies(id) on delete set null,
+      logo_data_url text,
+      enabled_modules text[] not null default '{}'::text[],
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `);
+
+  await exec(`
+    insert into app_settings (id, enabled_modules)
+    values ('main', array['dashboard','trips','drivers','clients','companies','users','driver-trips','home'])
+    on conflict (id) do nothing;
+  `);
+
+  await exec(`
     create table if not exists trips (
       id text primary key,
       created_by_user_id text not null references users(id) on delete restrict,

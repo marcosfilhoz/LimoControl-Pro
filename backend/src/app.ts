@@ -6,6 +6,7 @@ import clientsRouter from "./routes/clients";
 import companiesRouter from "./routes/companies";
 import dashboardRouter from "./routes/dashboard";
 import driversRouter from "./routes/drivers";
+import settingsRouter from "./routes/settings";
 import tripsRouter from "./routes/trips";
 import usersRouter from "./routes/users";
 import { requireAuth } from "./middleware/auth";
@@ -54,6 +55,7 @@ export function createApp() {
   app.use("/companies", companiesRouter);
   app.use("/trips", tripsRouter);
   app.use("/dashboard", dashboardRouter);
+  app.use("/settings", settingsRouter);
 
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error(err);

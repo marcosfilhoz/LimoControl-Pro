@@ -89,12 +89,20 @@ export const api = {
     request(`/companies/${id}/active`, { method: "PATCH", body: JSON.stringify({ active }) }),
 
   usersList: () => request<Array<{ id: string; name: string; email: string; role: string; driverId?: string; createdAt: string }>>("/users"),
-  userCreate: (data: { name: string; email: string; password: string; role: "admin" | "user" | "driver"; driverId?: string }) =>
+  userCreate: (data: { name: string; email: string; password: string; role: "admin" | "user" | "driver" | "dev"; driverId?: string }) =>
     request("/users", { method: "POST", body: JSON.stringify(data) }),
-  userUpdate: (id: string, data: { name?: string; role?: "admin" | "user" | "driver"; driverId?: string | null }) =>
+  userUpdate: (id: string, data: { name?: string; role?: "admin" | "user" | "driver" | "dev"; driverId?: string | null }) =>
     request(`/users/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   userDelete: (id: string) => request(`/users/${id}`, { method: "DELETE" }),
   userResetPassword: (id: string) => request(`/users/${id}/reset-password`, { method: "POST" }),
+
+  settingsGet: () =>
+    request<{ ownerCompanyId?: string | null; logoDataUrl?: string | null; enabledModules: string[] }>("/settings"),
+  settingsUpdate: (data: { ownerCompanyId?: string | null; logoDataUrl?: string | null; enabledModules?: string[] }) =>
+    request<{ ownerCompanyId?: string | null; logoDataUrl?: string | null; enabledModules: string[] }>("/settings", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   tripsList: () =>
     request<

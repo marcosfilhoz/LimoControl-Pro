@@ -22,7 +22,7 @@ export function UsersPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "user" | "driver">("user");
+  const [role, setRole] = useState<"admin" | "user" | "driver" | "dev">("user");
   const [driverId, setDriverId] = useState<string>("");
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function UsersPage() {
     setError(null);
     setEditing(u);
     setName(u.name);
-    setRole((u.role as "admin" | "user" | "driver") || "user");
+    setRole((u.role as "admin" | "user" | "driver" | "dev") || "user");
     setDriverId(u.driverId || "");
     setEditOpen(true);
   }
@@ -201,13 +201,14 @@ export function UsersPage() {
               className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
               value={role}
               onChange={(e) => {
-                setRole(e.target.value as "admin" | "user" | "driver");
+                setRole(e.target.value as "admin" | "user" | "driver" | "dev");
                 if (e.target.value !== "driver") setDriverId("");
               }}
             >
               <option value="user">user</option>
               <option value="admin">admin</option>
               <option value="driver">driver</option>
+              <option value="dev">dev</option>
             </select>
           </label>
           {role === "driver" && (
@@ -249,13 +250,14 @@ export function UsersPage() {
               className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
               value={role}
               onChange={(e) => {
-                setRole(e.target.value as "admin" | "user" | "driver");
+                setRole(e.target.value as "admin" | "user" | "driver" | "dev");
                 if (e.target.value !== "driver") setDriverId("");
               }}
             >
               <option value="user">user</option>
               <option value="admin">admin</option>
               <option value="driver">driver</option>
+              <option value="dev">dev</option>
             </select>
           </label>
           {role === "driver" && (

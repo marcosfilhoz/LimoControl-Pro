@@ -12,6 +12,7 @@ import { DriverTripsPage } from "./pages/RidesFunnelPage";
 import { TripsPage } from "./pages/TripsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { CompaniesPage } from "./pages/CompaniesPage";
+import { ParametersPage } from "./pages/ParametersPage";
 
 function HomeRedirect() {
   return <Navigate to="/" replace />;
@@ -36,6 +37,7 @@ export function App() {
                   <Route path="/clients" element={<ClientsPage />} />
                   <Route path="/companies" element={<CompaniesPage />} />
                   <Route path="/users" element={<UsersPage />} />
+                  <Route path="/parameters" element={<ParametersPage />} />
                   <Route path="*" element={<HomeRedirect />} />
                 </Routes>
               </AppShell>

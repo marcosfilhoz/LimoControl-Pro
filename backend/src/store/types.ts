@@ -1,4 +1,4 @@
-export type Role = "admin" | "user" | "driver";
+export type Role = "admin" | "user" | "driver" | "dev";
 
 export interface User {
   id: string;
@@ -35,6 +35,15 @@ export interface Company {
   phone?: string;
   active: boolean;
   createdAt: string;
+}
+
+export interface AppSettings {
+  id: string;
+  ownerCompanyId?: string | null;
+  logoDataUrl?: string | null;
+  enabledModules: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type TripStatus = "pending" | "in_progress" | "on_stop" | "completed";

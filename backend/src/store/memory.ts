@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { Client, Company, Driver, Trip, User } from "./types";
+import { AppSettings, Client, Company, Driver, Trip, User } from "./types";
 
 const now = () => new Date().toISOString();
 
@@ -55,6 +55,17 @@ export const trips: Trip[] = [
     createdAt: now(),
   },
 ];
+
+const defaultModules = ["dashboard", "trips", "drivers", "clients", "companies", "users", "driver-trips", "home"];
+
+export const settings: AppSettings = {
+  id: "main",
+  ownerCompanyId: null,
+  logoDataUrl: null,
+  enabledModules: defaultModules,
+  createdAt: now(),
+  updatedAt: now(),
+};
 
 export function generateId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36)}`;

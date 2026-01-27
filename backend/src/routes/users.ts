@@ -10,13 +10,13 @@ const createUserSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["admin", "user", "driver"]).default("user"),
+  role: z.enum(["admin", "user", "driver", "dev"]).default("user"),
   driverId: z.string().optional(),
 });
 
 const updateUserSchema = z.object({
   name: z.string().min(2).optional(),
-  role: z.enum(["admin", "user", "driver"]).optional(),
+  role: z.enum(["admin", "user", "driver", "dev"]).optional(),
   driverId: z.string().nullable().optional(),
 });
 

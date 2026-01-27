@@ -1,7 +1,15 @@
 import bcrypt from "bcryptjs";
 import { pool } from "../db/pool";
-import { generateId, clients as memClients, companies as memCompanies, drivers as memDrivers, trips as memTrips, users as memUsers } from "./memory";
-import type { Client, Company, Driver, Role, Trip, TripStatus, User } from "./types";
+import {
+  generateId,
+  clients as memClients,
+  companies as memCompanies,
+  drivers as memDrivers,
+  trips as memTrips,
+  users as memUsers,
+  settings as memSettings,
+} from "./memory";
+import type { AppSettings, Client, Company, Driver, Role, Trip, TripStatus, User } from "./types";
 
 function nowIso() {
   return new Date().toISOString();
@@ -17,6 +25,19 @@ function toNum(v: any) {
   if (typeof v === "number") return v;
   if (typeof v === "string") return Number(v);
   return Number(v);
+}
+
+const defaultModules = ["dashboard", "trips", "drivers", "clients", "companies", "users", "driver-trips", "home"];
+
+function toSettings(row: any): AppSettings {
+  return {
+    id: row.id,
+    ownerCompanyId: row.owner_company_id ?? null,
+    logoDataUrl: row.logo_data_url ?? null,
+    enabledModules: Array.isArray(row.enabled_modules) ? row.enabled_modules : [],
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+  };
 }
 
 function safeUser(u: User) {
@@ -1066,6 +1087,69 @@ export const store = {
         totalMiles: toNum(r.total_miles || 0),
         avgDurationMinutes: Number(toNum(r.avg_duration || 0).toFixed(2)),
       };
+    },
+  },
+
+  settings: {
+    async get(): Promise<AppSettings> {
+      if (!pool) return memSettings;
+      const res = await pool.query(
+        `select id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at
+         from app_settings where id='main' limit 1`
+      );
+      if (!res.rowCount) {
+        const createdAt = nowIso();
+        const insert = await pool.query(
+          `insert into app_settings (id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at)
+           values ('main', null, null, $1, $2, $2)
+           returning id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at`,
+          [defaultModules, createdAt]
+        );
+        return toSettings(insert.rows[0]);
+      }
+      return toSettings(res.rows[0]);
+    },
+
+    async update(input: { ownerCompanyId?: string | null; logoDataUrl?: string | null; enabledModules?: string[] }) {
+      if (!pool) {
+        memSettings.ownerCompanyId = input.ownerCompanyId ?? memSettings.ownerCompanyId ?? null;
+        if (input.logoDataUrl !== undefined) memSettings.logoDataUrl = input.logoDataUrl;
+        if (input.enabledModules !== undefined) memSettings.enabledModules = input.enabledModules;
+        memSettings.updatedAt = nowIso();
+        return memSettings;
+      }
+      const updates: string[] = [];
+      const params: any[] = [];
+      let paramIndex = 1;
+      if (input.ownerCompanyId !== undefined) {
+        updates.push(`owner_company_id = $${paramIndex++}`);
+        params.push(input.ownerCompanyId ?? null);
+      }
+      if (input.logoDataUrl !== undefined) {
+        updates.push(`logo_data_url = $${paramIndex++}`);
+        params.push(input.logoDataUrl ?? null);
+      }
+      if (input.enabledModules !== undefined) {
+        updates.push(`enabled_modules = $${paramIndex++}`);
+        params.push(input.enabledModules);
+      }
+      updates.push(`updated_at = $${paramIndex++}`);
+      params.push(nowIso());
+      const res = await pool.query(
+        `update app_settings set ${updates.join(", ")} where id='main'
+         returning id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at`,
+        params
+      );
+      if (!res.rowCount) {
+        const inserted = await pool.query(
+          `insert into app_settings (id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at)
+           values ('main', $1, $2, $3, $4, $4)
+           returning id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at`,
+          [input.ownerCompanyId ?? null, input.logoDataUrl ?? null, input.enabledModules ?? defaultModules, nowIso()]
+        );
+        return toSettings(inserted.rows[0]);
+      }
+      return toSettings(res.rows[0]);
     },
   },
 };
