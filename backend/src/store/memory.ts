@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { AppSettings, Client, Company, Driver, Trip, User } from "./types";
+import { AppSettings, Client, Company, Driver, Trip, User, Vehicle } from "./types";
 
 const now = () => new Date().toISOString();
 
@@ -29,6 +29,8 @@ export const clients: Client[] = [
 export const companies: Company[] = [
   { id: "co_1", name: "Empresa Parceira Demo", phone: "11988887777", active: true, createdAt: now() },
 ];
+
+export const vehicles: Vehicle[] = [];
 
 export const trips: Trip[] = [
   {

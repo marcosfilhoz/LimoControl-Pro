@@ -13,6 +13,7 @@ type Trip = {
   driverId: string;
   clientId: string | null;
   companyId: string;
+  vehicleId?: string | null;
   tripType?: "transfer" | "hourly";
   hourlyStartTime?: string;
   hourlyEndTime?: string;
@@ -37,12 +38,16 @@ type Trip = {
 type Driver = { id: string; name: string };
 type Client = { id: string; name: string; phone?: string; address?: string; active: boolean };
 type Company = { id: string; name: string };
+type Vehicle = { id: string; name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string; active: boolean };
+type Settings = { enabledModules: string[] };
 
 export function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,6 +72,7 @@ export function TripsPage() {
   const [clientId, setClientId] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [companyId, setCompanyId] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
   const [startAt, setStartAt] = useState(() => toLocalInputValue(new Date()));
   const [endAt, setEndAt] = useState(() => toLocalInputValue(new Date()));
   const [cnf, setCnf] = useState("");
@@ -88,13 +94,15 @@ export function TripsPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    Promise.all([api.tripsList(), api.driversList(), api.clientsList(), api.companiesList()])
-      .then(([t, d, c, co]) => {
+    Promise.all([api.tripsList(), api.driversList(), api.clientsList(), api.companiesList(), api.vehiclesList(), api.settingsGet()])
+      .then(([t, d, c, co, v, s]) => {
         if (!alive) return;
         setTrips(t);
         setDrivers(d);
         setClients(c);
         setCompanies(co);
+        setVehicles(v);
+        setSettings(s);
       })
       .catch(() => {
         if (alive) setError("Could not load trips.");
@@ -136,9 +144,12 @@ export function TripsPage() {
     setFilterTo(formatUsDateOnly(range.to));
   }, [filterMonth, filterWeek]);
 
+
   const driverById = useMemo(() => new Map(drivers.map((d) => [d.id, d.name])), [drivers]);
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c.name])), [companies]);
+  const vehicleById = useMemo(() => new Map(vehicles.map((v) => [v.id, v])), [vehicles]);
+  const vehiclesEnabled = settings?.enabledModules?.includes("vehicles") ?? false;
   const driverOptions = useMemo(
     () => drivers.map((d: any) => ({ id: d.id, label: d.name, disabled: d.active === false })),
     [drivers],
@@ -151,6 +162,26 @@ export function TripsPage() {
     () => clients.map((c: any) => ({ id: c.id, label: c.name, disabled: c.active === false })),
     [clients],
   );
+
+  const filteredVehicles = useMemo(() => {
+    if (!companyId) return [];
+    return vehicles.filter((v) => v.companyId === companyId);
+  }, [vehicles, companyId]);
+
+  const vehicleOptions = useMemo(
+    () => filteredVehicles.map((v) => ({ id: v.id, label: formatVehicleLabel(v), disabled: v.active === false })),
+    [filteredVehicles],
+  );
+
+  useEffect(() => {
+    if (!vehiclesEnabled) {
+      setVehicleId("");
+      return;
+    }
+    if (vehicleId && !filteredVehicles.some((v) => v.id === vehicleId)) {
+      setVehicleId("");
+    }
+  }, [vehiclesEnabled, vehicleId, filteredVehicles]);
 
   const filterCompanyOptions = useMemo(
     () => [{ id: "", label: "All companies" }, ...companyOptions],
@@ -209,11 +240,18 @@ export function TripsPage() {
   ]);
 
   async function refresh() {
-    const [t, d, c, co] = await Promise.all([api.tripsList(), api.driversList(), api.clientsList(), api.companiesList()]);
+    const [t, d, c, co, v] = await Promise.all([
+      api.tripsList(),
+      api.driversList(),
+      api.clientsList(),
+      api.companiesList(),
+      api.vehiclesList(),
+    ]);
     setTrips(t);
     setDrivers(d);
     setClients(c);
     setCompanies(co);
+    setVehicles(v);
   }
 
   function openCreate() {
@@ -225,7 +263,12 @@ export function TripsPage() {
     setClientId(defaultClientId);
     const defaultClient = defaultClientId ? clients.find((c) => c.id === defaultClientId) : null;
     setClientPhone(defaultClient?.phone ? String(defaultClient.phone) : "");
-    setCompanyId(companies.find((c: any) => c.active !== false)?.id || companies[0]?.id || "");
+    const defaultCompanyId = companies.find((c: any) => c.active !== false)?.id || companies[0]?.id || "";
+    setCompanyId(defaultCompanyId);
+    const defaultVehicleId = vehiclesEnabled
+      ? vehicles.find((v) => v.companyId === defaultCompanyId && v.active !== false)?.id || ""
+      : "";
+    setVehicleId(defaultVehicleId);
     setTripType("transfer");
     setHourlyStartTime("");
     setHourlyEndTime("");
@@ -253,6 +296,7 @@ export function TripsPage() {
     setClientId(trip.clientId || "");
     setClientPhone(trip.clientPhone ? String(trip.clientPhone) : "");
     setCompanyId(trip.companyId);
+    setVehicleId(trip.vehicleId || "");
     const resolvedTripType = trip.tripType === "hourly" ? "hourly" : "transfer";
     setTripType(resolvedTripType);
     if (resolvedTripType === "hourly") {
@@ -293,6 +337,7 @@ export function TripsPage() {
         clientId: clientId.trim() ? clientId : undefined,
         clientPhone: clientPhoneOut ? clientPhoneOut : undefined,
         companyId,
+        vehicleId: vehiclesEnabled ? (vehicleId ? vehicleId : null) : undefined,
         vehicleType: vehicleType ? (vehicleType as any) : null,
         cnf: cnf.trim() ? cnf.trim() : undefined,
         flightNumber: flightNumber.trim() ? flightNumber.trim() : undefined,
@@ -655,8 +700,38 @@ export function TripsPage() {
             placeholder="Type to search..."
             options={companyOptions}
             valueId={companyId}
-            onChangeId={setCompanyId}
+            onChangeId={(id) => {
+              setCompanyId(id);
+              if (vehiclesEnabled) {
+                const firstVehicle = vehicles.find((v) => v.companyId === id && v.active !== false);
+                setVehicleId(firstVehicle?.id || "");
+              }
+            }}
           />
+
+          {vehiclesEnabled ? (
+            <label className="block">
+              <div className="mb-1 text-sm font-medium text-slate-700">Vehicle (linked)</div>
+              <select
+                className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
+                value={vehicleId}
+                onChange={(e) => setVehicleId(e.target.value)}
+                disabled={!companyId || vehicleOptions.length === 0}
+              >
+                <option value="">No vehicle</option>
+                {vehicleOptions.map((v) => (
+                  <option key={v.id} value={v.id} disabled={v.disabled}>
+                    {v.label} {v.disabled ? "(inactive)" : ""}
+                  </option>
+                ))}
+              </select>
+              {!companyId ? (
+                <div className="mt-1 text-xs text-slate-500">Select a company to load vehicles.</div>
+              ) : vehicleOptions.length === 0 ? (
+                <div className="mt-1 text-xs text-slate-500">No vehicles linked to this company.</div>
+              ) : null}
+            </label>
+          ) : null}
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="text-sm font-medium text-slate-700">Trip type</div>
@@ -797,7 +872,15 @@ export function TripsPage() {
               <Detail label="Client" value={detailsTrip.clientId ? clientById.get(detailsTrip.clientId) || detailsTrip.clientId : "—"} />
               <Detail label="Phone Number" value={detailsTrip.clientPhone ? String(detailsTrip.clientPhone) : "—"} />
               <Detail label="Company" value={companyById.get(detailsTrip.companyId) || detailsTrip.companyId} />
-              <Detail label="Vehicle" value={detailsTrip.vehicleType ? String(detailsTrip.vehicleType) : "—"} />
+              <Detail
+                label="Vehicle"
+                value={
+                  detailsTrip.vehicleId
+                    ? formatVehicleLabel(vehicleById.get(detailsTrip.vehicleId)) || detailsTrip.vehicleId
+                    : "—"
+                }
+              />
+              <Detail label="Vehicle Type" value={detailsTrip.vehicleType ? String(detailsTrip.vehicleType) : "—"} />
               <Detail label="CNF" value={detailsTrip.cnf ? String(detailsTrip.cnf) : "—"} />
               <Detail label="Flight Number" value={detailsTrip.flightNumber ? String(detailsTrip.flightNumber) : "—"} />
               <Detail label="Meet & Greet" value={meetGreetLabel(detailsTrip.meetGreet)} />
@@ -817,7 +900,7 @@ export function TripsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-                onClick={() => exportTripPdf(detailsTrip, { driverById, clientById, companyById })}
+                onClick={() => exportTripPdf(detailsTrip, { driverById, clientById, companyById, vehicleById })}
               >
                 Export PDF
               </button>
@@ -862,9 +945,22 @@ function meetGreetLabel(v: unknown) {
   return "—";
 }
 
+function formatVehicleLabel(vehicle?: Vehicle | null) {
+  if (!vehicle) return "";
+  const base = vehicle.name || [vehicle.brand, vehicle.model].filter(Boolean).join(" ");
+  const year = vehicle.year ? String(vehicle.year) : "";
+  const plate = vehicle.plate ? `(${vehicle.plate})` : "";
+  return [base, year, plate].filter(Boolean).join(" ");
+}
+
 function exportTripPdf(
   trip: Trip,
-  refs: { driverById: Map<string, string>; clientById: Map<string, string>; companyById: Map<string, string> },
+  refs: {
+    driverById: Map<string, string>;
+    clientById: Map<string, string>;
+    companyById: Map<string, string>;
+    vehicleById: Map<string, Vehicle>;
+  },
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const left = 40;
@@ -873,7 +969,8 @@ function exportTripPdf(
   const driver = refs.driverById.get(trip.driverId) || trip.driverId;
   const client = trip.clientId ? refs.clientById.get(trip.clientId) || trip.clientId : "—";
   const company = refs.companyById.get(trip.companyId) || trip.companyId;
-  const vehicle = trip.vehicleType ? String(trip.vehicleType) : "—";
+  const vehicle = trip.vehicleId ? formatVehicleLabel(refs.vehicleById.get(trip.vehicleId)) || trip.vehicleId : "—";
+  const vehicleType = trip.vehicleType ? String(trip.vehicleType) : "—";
   const meetGreet = meetGreetLabel(trip.meetGreet);
   const phone = trip.clientPhone ? String(trip.clientPhone) : "—";
   const status = trip.received ? "Paid" : "Unpaid";
@@ -904,7 +1001,8 @@ function exportTripPdf(
     ["Client", client],
     ["Phone Number", phone],
     ["Company", company],
-    ["Vehicle Type", vehicle],
+    ["Vehicle", vehicle],
+    ["Vehicle Type", vehicleType],
     ["Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—"],
     ["Meet & Greet", meetGreet],
     ["Pickup Address", trip.origin],

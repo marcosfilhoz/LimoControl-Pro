@@ -9,6 +9,7 @@ import driversRouter from "./routes/drivers";
 import settingsRouter from "./routes/settings";
 import tripsRouter from "./routes/trips";
 import usersRouter from "./routes/users";
+import vehiclesRouter from "./routes/vehicles";
 import { requireAuth } from "./middleware/auth";
 import { env } from "./config/env";
 
@@ -56,6 +57,7 @@ export function createApp() {
   app.use("/trips", tripsRouter);
   app.use("/dashboard", dashboardRouter);
   app.use("/settings", settingsRouter);
+  app.use("/vehicles", vehiclesRouter);
 
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error(err);

@@ -10,6 +10,7 @@ type UserRow = { id: string; name: string; email: string; role: string; driverId
 export function UsersPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const canManageUsers = isAdmin || user?.role === "dev";
 
   const [items, setItems] = useState<UserRow[]>([]);
   const [drivers, setDrivers] = useState<Array<{ id: string; name: string; active: boolean }>>([]);
@@ -27,7 +28,7 @@ export function UsersPage() {
 
   useEffect(() => {
     let alive = true;
-    if (!isAdmin) return;
+    if (!canManageUsers) return;
     setLoading(true);
     Promise.all([api.usersList(), api.driversList()])
       .then(([u, d]) => {
@@ -45,7 +46,7 @@ export function UsersPage() {
     return () => {
       alive = false;
     };
-  }, [isAdmin]);
+  }, [canManageUsers]);
 
   async function refresh() {
     const d = await api.usersList();
@@ -119,11 +120,11 @@ export function UsersPage() {
     }
   }
 
-  if (!isAdmin) {
+  if (!canManageUsers) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="text-sm font-semibold">Users</div>
-        <div className="mt-1 text-sm text-slate-600">Only admins can access this page.</div>
+        <div className="mt-1 text-sm text-slate-600">Only admins or devs can access this page.</div>
       </div>
     );
   }

@@ -65,6 +65,20 @@ export async function initDbIfNeeded() {
   `);
 
   await exec(`
+    create table if not exists vehicles (
+      id text primary key,
+      name text not null,
+      brand text,
+      model text,
+      year integer,
+      plate text,
+      company_id text not null references companies(id) on delete restrict,
+      active boolean not null default true,
+      created_at timestamptz not null default now()
+    );
+  `);
+
+  await exec(`
     create table if not exists app_settings (
       id text primary key,
       owner_company_id text references companies(id) on delete set null,
@@ -88,6 +102,7 @@ export async function initDbIfNeeded() {
       driver_id text not null references drivers(id) on delete restrict,
       client_id text references clients(id) on delete restrict,
       company_id text not null references companies(id) on delete restrict,
+      vehicle_id text references vehicles(id) on delete set null,
       trip_type text not null default 'transfer',
       hourly_start_time text,
       hourly_end_time text,
@@ -157,6 +172,17 @@ export async function initDbIfNeeded() {
       else
         alter table trips add column trip_type text not null default 'transfer';
         raise notice 'Added trip_type column to trips table';
+      end if;
+    end $$;
+  `);
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='vehicle_id') then
+        null;
+      else
+        alter table trips add column vehicle_id text references vehicles(id) on delete set null;
+        raise notice 'Added vehicle_id column to trips table';
       end if;
     end $$;
   `);

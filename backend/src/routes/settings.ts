@@ -11,8 +11,6 @@ const updateSchema = z.object({
   enabledModules: z.array(z.string()).optional(),
 });
 
-router.use(requireRole("dev"));
-
 router.get("/", (_req, res) => {
   (async () => res.json(await store.settings.get()))().catch((err) => {
     console.error(err);
@@ -21,6 +19,7 @@ router.get("/", (_req, res) => {
 });
 
 router.put("/", (req, res) => {
+  requireRole("dev")(req, res, () => {
   (async () => {
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -33,6 +32,7 @@ router.put("/", (req, res) => {
   })().catch((err) => {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
+  });
   });
 });
 

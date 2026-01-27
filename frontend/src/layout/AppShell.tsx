@@ -13,6 +13,7 @@ const nav: NavItem[] = [
   { to: "/drivers", label: "Drivers", excludeDriver: true },
   { to: "/clients", label: "Client", excludeDriver: true },
   { to: "/companies", label: "Companies", excludeDriver: true },
+  { to: "/vehicles", label: "Vehicles", excludeDriver: true, adminOnly: true },
   { to: "/users", label: "Users", adminOnly: true },
 ];
 
@@ -21,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
+  const isAdminOrDev = isAdmin || user?.role === "dev";
   const isDriver = user?.role === "driver";
   const isDev = user?.role === "dev";
   const initials = (user?.name || user?.email || "?")
@@ -103,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="rounded-xl border border-slate-200 bg-white p-2">
             {nav
               .filter((item) => {
-                if (item.adminOnly && !isAdmin) return false;
+                if (item.adminOnly && !isAdminOrDev) return false;
                 if (item.driverOnly && !isDriver) return false;
                 if (item.excludeDriver && isDriver) return false;
                 // Drivers only see Driver Trips, admin and user see everything
@@ -131,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <nav className="rounded-xl border border-slate-200 bg-white p-2">
               {nav
                 .filter((item) => {
-                  if (item.adminOnly && !isAdmin) return false;
+                  if (item.adminOnly && !isAdminOrDev) return false;
                   if (item.driverOnly && !isDriver) return false;
                   if (item.excludeDriver && isDriver) return false;
                   return true;

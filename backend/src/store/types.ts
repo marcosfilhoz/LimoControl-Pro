@@ -37,6 +37,18 @@ export interface Company {
   createdAt: string;
 }
 
+export interface Vehicle {
+  id: string;
+  name: string;
+  brand?: string;
+  model?: string;
+  year?: number;
+  plate?: string;
+  companyId: string;
+  active: boolean;
+  createdAt: string;
+}
+
 export interface AppSettings {
   id: string;
   ownerCompanyId?: string | null;
@@ -54,6 +66,7 @@ export interface Trip {
   driverId: string;
   clientId: string | null;
   companyId: string;
+  vehicleId?: string | null;
   tripType?: "transfer" | "hourly";
   hourlyStartTime?: string;
   hourlyEndTime?: string;

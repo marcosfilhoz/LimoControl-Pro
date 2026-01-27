@@ -7,9 +7,10 @@ import {
   drivers as memDrivers,
   trips as memTrips,
   users as memUsers,
+  vehicles as memVehicles,
   settings as memSettings,
 } from "./memory";
-import type { AppSettings, Client, Company, Driver, Role, Trip, TripStatus, User } from "./types";
+import type { AppSettings, Client, Company, Driver, Role, Trip, TripStatus, User, Vehicle } from "./types";
 
 function nowIso() {
   return new Date().toISOString();
@@ -524,11 +525,169 @@ export const store = {
     },
   },
 
+  vehicles: {
+    async list(): Promise<Vehicle[]> {
+      if (!pool) return memVehicles;
+      const res = await pool.query(
+        `select id, name, brand, model, year, plate, company_id, active, created_at from vehicles order by created_at desc`
+      );
+      return res.rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        brand: r.brand ?? undefined,
+        model: r.model ?? undefined,
+        year: r.year ?? undefined,
+        plate: r.plate ?? undefined,
+        companyId: r.company_id,
+        active: !!r.active,
+        createdAt: toIso(r.created_at),
+      }));
+    },
+    async exists(id: string) {
+      if (!pool) return memVehicles.some((v) => v.id === id);
+      const res = await pool.query(`select 1 from vehicles where id=$1 limit 1`, [id]);
+      return !!res.rowCount;
+    },
+    async get(id: string): Promise<Vehicle | null> {
+      if (!pool) return memVehicles.find((v) => v.id === id) || null;
+      const res = await pool.query(
+        `select id, name, brand, model, year, plate, company_id, active, created_at from vehicles where id=$1 limit 1`,
+        [id]
+      );
+      if (!res.rowCount) return null;
+      const r = res.rows[0];
+      return {
+        id: r.id,
+        name: r.name,
+        brand: r.brand ?? undefined,
+        model: r.model ?? undefined,
+        year: r.year ?? undefined,
+        plate: r.plate ?? undefined,
+        companyId: r.company_id,
+        active: !!r.active,
+        createdAt: toIso(r.created_at),
+      };
+    },
+    async create(input: Omit<Vehicle, "id" | "createdAt" | "active">) {
+      if (!pool) {
+        const v: Vehicle = { id: generateId("v"), createdAt: nowIso(), active: true, ...input };
+        memVehicles.push(v);
+        return v;
+      }
+      const id = generateId("v");
+      const res = await pool.query(
+        `insert into vehicles (id, name, brand, model, year, plate, company_id, active)
+         values ($1,$2,$3,$4,$5,$6,$7,true)
+         returning id, name, brand, model, year, plate, company_id, active, created_at`,
+        [id, input.name, input.brand ?? null, input.model ?? null, input.year ?? null, input.plate ?? null, input.companyId]
+      );
+      const r = res.rows[0];
+      return {
+        id: r.id,
+        name: r.name,
+        brand: r.brand ?? undefined,
+        model: r.model ?? undefined,
+        year: r.year ?? undefined,
+        plate: r.plate ?? undefined,
+        companyId: r.company_id,
+        active: !!r.active,
+        createdAt: toIso(r.created_at),
+      };
+    },
+    async update(id: string, input: { name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string }) {
+      if (!pool) {
+        const idx = memVehicles.findIndex((v) => v.id === id);
+        if (idx === -1) return { error: "Vehicle not found" as const };
+        memVehicles[idx] = { ...memVehicles[idx], ...input };
+        return { vehicle: memVehicles[idx] };
+      }
+      const res = await pool.query(
+        `update vehicles set name=$2, brand=$3, model=$4, year=$5, plate=$6, company_id=$7
+         where id=$1
+         returning id, name, brand, model, year, plate, company_id, active, created_at`,
+        [id, input.name, input.brand ?? null, input.model ?? null, input.year ?? null, input.plate ?? null, input.companyId]
+      );
+      if (!res.rowCount) return { error: "Vehicle not found" as const };
+      const r = res.rows[0];
+      return {
+        vehicle: {
+          id: r.id,
+          name: r.name,
+          brand: r.brand ?? undefined,
+          model: r.model ?? undefined,
+          year: r.year ?? undefined,
+          plate: r.plate ?? undefined,
+          companyId: r.company_id,
+          active: !!r.active,
+          createdAt: toIso(r.created_at),
+        },
+      };
+    },
+    async setActive(id: string, active: boolean) {
+      if (!pool) {
+        const idx = memVehicles.findIndex((v) => v.id === id);
+        if (idx === -1) return { error: "Vehicle not found" as const };
+        memVehicles[idx] = { ...memVehicles[idx], active };
+        return { vehicle: memVehicles[idx] };
+      }
+      const res = await pool.query(
+        `update vehicles set active=$2 where id=$1 returning id, name, brand, model, year, plate, company_id, active, created_at`,
+        [id, active]
+      );
+      if (!res.rowCount) return { error: "Vehicle not found" as const };
+      const r = res.rows[0];
+      return {
+        vehicle: {
+          id: r.id,
+          name: r.name,
+          brand: r.brand ?? undefined,
+          model: r.model ?? undefined,
+          year: r.year ?? undefined,
+          plate: r.plate ?? undefined,
+          companyId: r.company_id,
+          active: !!r.active,
+          createdAt: toIso(r.created_at),
+        },
+      };
+    },
+    async delete(id: string) {
+      if (!pool) {
+        const idx = memVehicles.findIndex((v) => v.id === id);
+        if (idx === -1) return { error: "Vehicle not found" as const };
+        if (memTrips.some((t) => t.vehicleId === id)) return { error: "Cannot delete vehicle with trips" as const, conflict: true as const };
+        const removed = memVehicles.splice(idx, 1)[0];
+        return { vehicle: removed };
+      }
+      const hasTrips = await pool.query(`select 1 from trips where vehicle_id=$1 limit 1`, [id]);
+      if (hasTrips.rowCount) return { error: "Cannot delete vehicle with trips" as const, conflict: true as const };
+      const res = await pool.query(
+        `delete from vehicles where id=$1 returning id, name, brand, model, year, plate, company_id, active, created_at`,
+        [id]
+      );
+      if (!res.rowCount) return { error: "Vehicle not found" as const };
+      const r = res.rows[0];
+      return {
+        vehicle: {
+          id: r.id,
+          name: r.name,
+          brand: r.brand ?? undefined,
+          model: r.model ?? undefined,
+          year: r.year ?? undefined,
+          plate: r.plate ?? undefined,
+          companyId: r.company_id,
+          active: !!r.active,
+          createdAt: toIso(r.created_at),
+        },
+      };
+    },
+  },
+
   trips: {
     async list(filter: {
       driverId?: string;
       clientId?: string;
       companyId?: string;
+      vehicleId?: string;
       createdByUserId?: string;
       cnf?: string;
       flightNumber?: string;
@@ -536,13 +695,14 @@ export const store = {
       meetGreet?: boolean | string;
     }): Promise<Trip[]> {
       if (!pool) {
-        const { driverId, clientId, companyId, createdByUserId, cnf, flightNumber, meetGreet } = filter;
+        const { driverId, clientId, companyId, vehicleId, createdByUserId, cnf, flightNumber, meetGreet } = filter;
         return memTrips.filter(
           (t) =>
             (createdByUserId ? t.createdByUserId === createdByUserId : true) &&
             (driverId ? t.driverId === driverId : true) &&
             (clientId ? t.clientId === clientId : true) &&
             (companyId ? t.companyId === companyId : true) &&
+            (vehicleId ? t.vehicleId === vehicleId : true) &&
             (cnf ? (t.cnf || "").toLowerCase().includes(cnf.toLowerCase()) : true) &&
             (flightNumber ? (t.flightNumber || "").toLowerCase().includes(flightNumber.toLowerCase()) : true) &&
             (typeof meetGreet === "boolean"
@@ -571,6 +731,10 @@ export const store = {
         params.push(filter.companyId);
         where.push(`company_id=$${params.length}`);
       }
+      if (filter.vehicleId) {
+        params.push(filter.vehicleId);
+        where.push(`vehicle_id=$${params.length}`);
+      }
       if (filter.cnf) {
         params.push(`%${filter.cnf}%`);
         where.push(`cnf ilike $${params.length}`);
@@ -588,7 +752,7 @@ export const store = {
         where.push(`meet_greet ilike $${params.length}`);
       }
       const sql =
-        `select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at from trips` +
+        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at from trips` +
         (where.length ? ` where ${where.join(" and ")}` : "") +
         ` order by start_at desc`;
       console.log(`[Store] Executing query: ${sql}`, params);
@@ -600,6 +764,7 @@ export const store = {
         driverId: r.driver_id,
         clientId: r.client_id ?? null,
         companyId: r.company_id,
+        vehicleId: r.vehicle_id ?? null,
         tripType: r.trip_type ?? "transfer",
         hourlyStartTime: r.hourly_start_time ?? undefined,
         hourlyEndTime: r.hourly_end_time ?? undefined,
@@ -630,7 +795,7 @@ export const store = {
         return memTrips.find((t) => t.id === id) || null;
       }
       const res = await pool.query(
-        `select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at
+        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at
          from trips where id=$1 limit 1`,
         [id]
       );
@@ -642,6 +807,7 @@ export const store = {
         driverId: r.driver_id,
         clientId: r.client_id ?? null,
         companyId: r.company_id,
+        vehicleId: r.vehicle_id ?? null,
         tripType: r.trip_type ?? "transfer",
         hourlyStartTime: r.hourly_start_time ?? undefined,
         hourlyEndTime: r.hourly_end_time ?? undefined,
@@ -683,15 +849,16 @@ export const store = {
       }
       const id = generateId("t");
       const res = await pool.query(
-        `insert into trips (id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
-         returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
+        `insert into trips (id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+         returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
         [
           id,
           createdByUserId,
           input.driverId,
           input.clientId ?? null,
           input.companyId,
+          input.vehicleId ?? null,
           input.tripType ?? "transfer",
           input.hourlyStartTime ?? null,
           input.hourlyEndTime ?? null,
@@ -720,6 +887,7 @@ export const store = {
         driverId: r.driver_id,
         clientId: r.client_id ?? null,
         companyId: r.company_id,
+        vehicleId: r.vehicle_id ?? null,
         tripType: r.trip_type ?? "transfer",
         hourlyStartTime: r.hourly_start_time ?? undefined,
         hourlyEndTime: r.hourly_end_time ?? undefined,
@@ -771,6 +939,11 @@ export const store = {
       if (input.companyId !== undefined) {
         updates.push(`company_id = $${paramIndex}`);
         params.push(input.companyId);
+        paramIndex++;
+      }
+      if (input.vehicleId !== undefined) {
+        updates.push(`vehicle_id = $${paramIndex}`);
+        params.push(input.vehicleId ?? null);
         paramIndex++;
       }
       if (input.tripType !== undefined) {
@@ -881,7 +1054,7 @@ export const store = {
       
       if (updates.length === 0) {
         // No updates, just return the current trip
-        const res = await pool.query(`select id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at from trips where id=$1`, [id]);
+        const res = await pool.query(`select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at from trips where id=$1`, [id]);
         if (!res.rowCount) return { error: "Trip not found" as const };
         const r = res.rows[0];
         return {
@@ -891,6 +1064,7 @@ export const store = {
             driverId: r.driver_id,
             clientId: r.client_id ?? null,
             companyId: r.company_id,
+            vehicleId: r.vehicle_id ?? null,
             tripType: r.trip_type ?? "transfer",
             hourlyStartTime: r.hourly_start_time ?? undefined,
             hourlyEndTime: r.hourly_end_time ?? undefined,
@@ -918,7 +1092,7 @@ export const store = {
       }
       
       const res = await pool.query(
-        `update trips set ${updates.join(", ")} where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
+        `update trips set ${updates.join(", ")} where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
         params
       );
       if (!res.rowCount) return { error: "Trip not found" as const };
@@ -930,6 +1104,7 @@ export const store = {
           driverId: r.driver_id,
           clientId: r.client_id ?? null,
           companyId: r.company_id,
+          vehicleId: r.vehicle_id ?? null,
           tripType: r.trip_type ?? "transfer",
           hourlyStartTime: r.hourly_start_time ?? undefined,
           hourlyEndTime: r.hourly_end_time ?? undefined,
@@ -964,7 +1139,7 @@ export const store = {
         return { trip: memTrips[idx] };
       }
       const res = await pool.query(
-        `update trips set received=$2 where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
+        `update trips set received=$2 where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
         [id, received]
       );
       if (!res.rowCount) return { error: "Trip not found" as const };
@@ -976,6 +1151,7 @@ export const store = {
           driverId: r.driver_id,
           clientId: r.client_id ?? null,
           companyId: r.company_id,
+          vehicleId: r.vehicle_id ?? null,
           tripType: r.trip_type ?? "transfer",
           hourlyStartTime: r.hourly_start_time ?? undefined,
           hourlyEndTime: r.hourly_end_time ?? undefined,
@@ -1014,7 +1190,7 @@ export const store = {
       if (!res.rowCount) return { error: "Trip not found" as const };
       if (res.rows[0].received) return { error: "Cannot delete a received trip" as const, conflict: true as const };
       const del = await pool.query(
-        `delete from trips where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
+        `delete from trips where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
         [id]
       );
       const r = del.rows[0];
@@ -1025,6 +1201,7 @@ export const store = {
           driverId: r.driver_id,
           clientId: r.client_id ?? null,
           companyId: r.company_id,
+          vehicleId: r.vehicle_id ?? null,
           tripType: r.trip_type ?? "transfer",
           hourlyStartTime: r.hourly_start_time ?? undefined,
           hourlyEndTime: r.hourly_end_time ?? undefined,

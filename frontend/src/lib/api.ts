@@ -88,6 +88,18 @@ export const api = {
   companySetActive: (id: string, active: boolean) =>
     request(`/companies/${id}/active`, { method: "PATCH", body: JSON.stringify({ active }) }),
 
+  vehiclesList: () =>
+    request<Array<{ id: string; name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string; active: boolean }>>(
+      "/vehicles"
+    ),
+  vehicleCreate: (data: { name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string }) =>
+    request("/vehicles", { method: "POST", body: JSON.stringify(data) }),
+  vehicleUpdate: (id: string, data: { name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string }) =>
+    request(`/vehicles/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  vehicleDelete: (id: string) => request(`/vehicles/${id}`, { method: "DELETE" }),
+  vehicleSetActive: (id: string, active: boolean) =>
+    request(`/vehicles/${id}/active`, { method: "PATCH", body: JSON.stringify({ active }) }),
+
   usersList: () => request<Array<{ id: string; name: string; email: string; role: string; driverId?: string; createdAt: string }>>("/users"),
   userCreate: (data: { name: string; email: string; password: string; role: "admin" | "user" | "driver" | "dev"; driverId?: string }) =>
     request("/users", { method: "POST", body: JSON.stringify(data) }),
@@ -111,6 +123,7 @@ export const api = {
         driverId: string;
         clientId: string | null;
         companyId: string;
+        vehicleId?: string | null;
         tripType?: "transfer" | "hourly";
         hourlyStartTime?: string;
         hourlyEndTime?: string;
@@ -140,6 +153,7 @@ export const api = {
     clientId?: string;
     clientName?: string;
     companyId: string;
+    vehicleId?: string | null;
     tripType?: "transfer" | "hourly";
     hourlyStartTime?: string;
     hourlyEndTime?: string;
@@ -164,6 +178,7 @@ export const api = {
     clientId?: string;
     clientName?: string;
     companyId: string;
+    vehicleId?: string | null;
     tripType?: "transfer" | "hourly";
     hourlyStartTime?: string;
     hourlyEndTime?: string;

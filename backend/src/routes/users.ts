@@ -24,7 +24,7 @@ function safeUser(u: User) {
   return { id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt };
 }
 
-router.use(requireAuth, requireRole("admin"));
+router.use(requireAuth, requireRole(["admin", "dev"]));
 
 router.get("/", (_req, res) => {
   (async () => res.json(await store.users.listSafe()))().catch((err) => {

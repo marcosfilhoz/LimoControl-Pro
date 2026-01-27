@@ -13,6 +13,7 @@ const tripSchema = z.object({
   clientName: z.string().optional(),
   clientPhone: z.string().optional(),
   companyId: z.string(),
+  vehicleId: z.string().nullable().optional(),
   tripType: z.enum(["transfer", "hourly"]).optional(),
   hourlyStartTime: z.string().optional(),
   hourlyEndTime: z.string().optional(),
@@ -116,6 +117,11 @@ router.post("/", (req, res) => {
     const { driverId, companyId } = parsed.data;
     if (!(await store.drivers.exists(driverId))) return res.status(400).json({ error: "Driver not found" });
     if (!(await store.companies.exists(companyId))) return res.status(400).json({ error: "Company not found" });
+    if (parsed.data.vehicleId) {
+      const vehicle = await store.vehicles.get(parsed.data.vehicleId);
+      if (!vehicle) return res.status(400).json({ error: "Vehicle not found" });
+      if (vehicle.companyId !== companyId) return res.status(400).json({ error: "Vehicle does not belong to company" });
+    }
 
     let clientId: string | null = null;
     if (parsed.data.clientId && parsed.data.clientId.trim()) {
@@ -151,6 +157,11 @@ router.put("/:id", (req, res) => {
     const { driverId, companyId } = parsed.data;
     if (!(await store.drivers.exists(driverId))) return res.status(400).json({ error: "Driver not found" });
     if (!(await store.companies.exists(companyId))) return res.status(400).json({ error: "Company not found" });
+    if (parsed.data.vehicleId) {
+      const vehicle = await store.vehicles.get(parsed.data.vehicleId);
+      if (!vehicle) return res.status(400).json({ error: "Vehicle not found" });
+      if (vehicle.companyId !== companyId) return res.status(400).json({ error: "Vehicle does not belong to company" });
+    }
 
     let clientId: string | null = null;
     if (parsed.data.clientId && parsed.data.clientId.trim()) {
