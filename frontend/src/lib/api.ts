@@ -109,9 +109,30 @@ export const api = {
   userResetPassword: (id: string) => request(`/users/${id}/reset-password`, { method: "POST" }),
 
   settingsGet: () =>
-    request<{ ownerCompanyId?: string | null; logoDataUrl?: string | null; enabledModules: string[] }>("/settings"),
-  settingsUpdate: (data: { ownerCompanyId?: string | null; logoDataUrl?: string | null; enabledModules?: string[] }) =>
-    request<{ ownerCompanyId?: string | null; logoDataUrl?: string | null; enabledModules: string[] }>("/settings", {
+    request<{
+      ownerCompanyId?: string | null;
+      logoDataUrl?: string | null;
+      enabledModules: string[];
+      pdfCompany?: string | null;
+      pdfEmail?: string | null;
+      pdfPhone?: string | null;
+    }>("/settings"),
+  settingsUpdate: (data: {
+    ownerCompanyId?: string | null;
+    logoDataUrl?: string | null;
+    enabledModules?: string[];
+    pdfCompany?: string | null;
+    pdfEmail?: string | null;
+    pdfPhone?: string | null;
+  }) =>
+    request<{
+      ownerCompanyId?: string | null;
+      logoDataUrl?: string | null;
+      enabledModules: string[];
+      pdfCompany?: string | null;
+      pdfEmail?: string | null;
+      pdfPhone?: string | null;
+    }>("/settings", {
       method: "PUT",
       body: JSON.stringify(data),
     }),

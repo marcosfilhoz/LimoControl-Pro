@@ -65,6 +65,9 @@ export const settings: AppSettings = {
   ownerCompanyId: null,
   logoDataUrl: null,
   enabledModules: defaultModules,
+  pdfCompany: null,
+  pdfEmail: null,
+  pdfPhone: null,
   createdAt: now(),
   updatedAt: now(),
 };

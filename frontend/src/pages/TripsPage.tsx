@@ -39,7 +39,7 @@ type Driver = { id: string; name: string };
 type Client = { id: string; name: string; phone?: string; address?: string; active: boolean };
 type Company = { id: string; name: string };
 type Vehicle = { id: string; name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string; active: boolean };
-type Settings = { enabledModules: string[] };
+type Settings = { enabledModules: string[]; pdfCompany?: string | null; pdfEmail?: string | null; pdfPhone?: string | null };
 
 export function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -900,7 +900,19 @@ export function TripsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-                onClick={() => exportTripPdf(detailsTrip, { driverById, clientById, companyById, vehicleById })}
+                onClick={() =>
+                  exportTripPdf(detailsTrip, {
+                    driverById,
+                    clientById,
+                    companyById,
+                    vehicleById,
+                    footer: {
+                      company: settings?.pdfCompany || "",
+                      email: settings?.pdfEmail || "",
+                      phone: settings?.pdfPhone || "",
+                    },
+                  })
+                }
               >
                 Export PDF
               </button>
@@ -953,6 +965,14 @@ function formatVehicleLabel(vehicle?: Vehicle | null) {
   return [base, year, plate].filter(Boolean).join(" ");
 }
 
+function formatUsPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return value.trim();
+}
+
 function exportTripPdf(
   trip: Trip,
   refs: {
@@ -960,6 +980,7 @@ function exportTripPdf(
     clientById: Map<string, string>;
     companyById: Map<string, string>;
     vehicleById: Map<string, Vehicle>;
+    footer?: { company?: string; email?: string; phone?: string };
   },
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
@@ -980,6 +1001,9 @@ function exportTripPdf(
     trip.tripType === "hourly"
       ? `${trip.hourlyStartTime || formatTimeInput(trip.startAt)} - ${trip.hourlyEndTime || formatTimeInput(trip.endAt)}`
       : "—";
+  const footerCompany = (refs.footer?.company || "").trim();
+  const footerEmail = (refs.footer?.email || "").trim();
+  const footerPhone = formatUsPhone(refs.footer?.phone || "");
 
   // Title
   doc.setFontSize(18);
@@ -1054,6 +1078,12 @@ function exportTripPdf(
   // Save PDF
   const fileSafeDate = new Date(trip.startAt).toISOString().slice(0, 10);
   const fileName = trip.cnf ? `trip_${trip.cnf}_${fileSafeDate}.pdf` : `trip_${fileSafeDate}_${trip.id}.pdf`;
+  const footerText = [footerCompany, footerEmail, footerPhone].filter(Boolean).join(" · ");
+  if (footerText) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(footerText, left, doc.internal.pageSize.getHeight() - 30);
+  }
   doc.save(fileName);
 }
 

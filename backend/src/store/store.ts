@@ -36,6 +36,9 @@ function toSettings(row: any): AppSettings {
     ownerCompanyId: row.owner_company_id ?? null,
     logoDataUrl: row.logo_data_url ?? null,
     enabledModules: Array.isArray(row.enabled_modules) ? row.enabled_modules : [],
+    pdfCompany: row.pdf_company ?? null,
+    pdfEmail: row.pdf_email ?? null,
+    pdfPhone: row.pdf_phone ?? null,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };
@@ -1271,15 +1274,15 @@ export const store = {
     async get(): Promise<AppSettings> {
       if (!pool) return memSettings;
       const res = await pool.query(
-        `select id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at
+        `select id, owner_company_id, logo_data_url, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at
          from app_settings where id='main' limit 1`
       );
       if (!res.rowCount) {
         const createdAt = nowIso();
         const insert = await pool.query(
-          `insert into app_settings (id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at)
-           values ('main', null, null, $1, $2, $2)
-           returning id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at`,
+          `insert into app_settings (id, owner_company_id, logo_data_url, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at)
+           values ('main', null, null, $1, null, null, null, $2, $2)
+           returning id, owner_company_id, logo_data_url, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
           [defaultModules, createdAt]
         );
         return toSettings(insert.rows[0]);
@@ -1287,11 +1290,21 @@ export const store = {
       return toSettings(res.rows[0]);
     },
 
-    async update(input: { ownerCompanyId?: string | null; logoDataUrl?: string | null; enabledModules?: string[] }) {
+    async update(input: {
+      ownerCompanyId?: string | null;
+      logoDataUrl?: string | null;
+      enabledModules?: string[];
+      pdfCompany?: string | null;
+      pdfEmail?: string | null;
+      pdfPhone?: string | null;
+    }) {
       if (!pool) {
         memSettings.ownerCompanyId = input.ownerCompanyId ?? memSettings.ownerCompanyId ?? null;
         if (input.logoDataUrl !== undefined) memSettings.logoDataUrl = input.logoDataUrl;
         if (input.enabledModules !== undefined) memSettings.enabledModules = input.enabledModules;
+        if (input.pdfCompany !== undefined) memSettings.pdfCompany = input.pdfCompany;
+        if (input.pdfEmail !== undefined) memSettings.pdfEmail = input.pdfEmail;
+        if (input.pdfPhone !== undefined) memSettings.pdfPhone = input.pdfPhone;
         memSettings.updatedAt = nowIso();
         return memSettings;
       }
@@ -1310,19 +1323,39 @@ export const store = {
         updates.push(`enabled_modules = $${paramIndex++}`);
         params.push(input.enabledModules);
       }
+      if (input.pdfCompany !== undefined) {
+        updates.push(`pdf_company = $${paramIndex++}`);
+        params.push(input.pdfCompany ?? null);
+      }
+      if (input.pdfEmail !== undefined) {
+        updates.push(`pdf_email = $${paramIndex++}`);
+        params.push(input.pdfEmail ?? null);
+      }
+      if (input.pdfPhone !== undefined) {
+        updates.push(`pdf_phone = $${paramIndex++}`);
+        params.push(input.pdfPhone ?? null);
+      }
       updates.push(`updated_at = $${paramIndex++}`);
       params.push(nowIso());
       const res = await pool.query(
         `update app_settings set ${updates.join(", ")} where id='main'
-         returning id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at`,
+         returning id, owner_company_id, logo_data_url, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
         params
       );
       if (!res.rowCount) {
         const inserted = await pool.query(
-          `insert into app_settings (id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at)
-           values ('main', $1, $2, $3, $4, $4)
-           returning id, owner_company_id, logo_data_url, enabled_modules, created_at, updated_at`,
-          [input.ownerCompanyId ?? null, input.logoDataUrl ?? null, input.enabledModules ?? defaultModules, nowIso()]
+          `insert into app_settings (id, owner_company_id, logo_data_url, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at)
+           values ('main', $1, $2, $3, $4, $5, $6, $7, $7)
+           returning id, owner_company_id, logo_data_url, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
+          [
+            input.ownerCompanyId ?? null,
+            input.logoDataUrl ?? null,
+            input.enabledModules ?? defaultModules,
+            input.pdfCompany ?? null,
+            input.pdfEmail ?? null,
+            input.pdfPhone ?? null,
+            nowIso(),
+          ]
         );
         return toSettings(inserted.rows[0]);
       }

@@ -84,6 +84,9 @@ export async function initDbIfNeeded() {
       owner_company_id text references companies(id) on delete set null,
       logo_data_url text,
       enabled_modules text[] not null default '{}'::text[],
+      pdf_company text,
+      pdf_email text,
+      pdf_phone text,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
@@ -93,6 +96,27 @@ export async function initDbIfNeeded() {
     insert into app_settings (id, enabled_modules)
     values ('main', array['dashboard','trips','drivers','clients','companies','users','driver-trips','home'])
     on conflict (id) do nothing;
+  `);
+
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='app_settings' and column_name='pdf_company') then
+        null;
+      else
+        alter table app_settings add column pdf_company text;
+      end if;
+      if exists (select 1 from information_schema.columns where table_name='app_settings' and column_name='pdf_email') then
+        null;
+      else
+        alter table app_settings add column pdf_email text;
+      end if;
+      if exists (select 1 from information_schema.columns where table_name='app_settings' and column_name='pdf_phone') then
+        null;
+      else
+        alter table app_settings add column pdf_phone text;
+      end if;
+    end $$;
   `);
 
   await exec(`

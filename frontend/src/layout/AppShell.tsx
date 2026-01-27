@@ -1,20 +1,28 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
+import { api } from "../lib/api";
 
-type NavItem = { to: string; label: string; adminOnly?: boolean; driverOnly?: boolean; excludeDriver?: boolean };
+type NavItem = {
+  to: string;
+  label: string;
+  moduleId?: string;
+  adminOnly?: boolean;
+  driverOnly?: boolean;
+  excludeDriver?: boolean;
+};
 
 const nav: NavItem[] = [
-  { to: "/", label: "Home" },
-  { to: "/dashboard", label: "Dashboard", excludeDriver: true },
-  { to: "/rides-funnel", label: "Driver Trips" },
-  { to: "/trips", label: "Trips", excludeDriver: true },
-  { to: "/drivers", label: "Drivers", excludeDriver: true },
-  { to: "/clients", label: "Client", excludeDriver: true },
-  { to: "/companies", label: "Companies", excludeDriver: true },
-  { to: "/vehicles", label: "Vehicles", excludeDriver: true, adminOnly: true },
-  { to: "/users", label: "Users", adminOnly: true },
+  { to: "/", label: "Home", moduleId: "home" },
+  { to: "/dashboard", label: "Dashboard", moduleId: "dashboard", excludeDriver: true },
+  { to: "/rides-funnel", label: "Driver Trips", moduleId: "driver-trips" },
+  { to: "/trips", label: "Trips", moduleId: "trips", excludeDriver: true },
+  { to: "/drivers", label: "Drivers", moduleId: "drivers", excludeDriver: true },
+  { to: "/clients", label: "Client", moduleId: "clients", excludeDriver: true },
+  { to: "/companies", label: "Companies", moduleId: "companies", excludeDriver: true },
+  { to: "/vehicles", label: "Vehicles", moduleId: "vehicles", excludeDriver: true, adminOnly: true },
+  { to: "/users", label: "Users", moduleId: "users", adminOnly: true },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -25,6 +33,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAdminOrDev = isAdmin || user?.role === "dev";
   const isDriver = user?.role === "driver";
   const isDev = user?.role === "dev";
+  const [enabledModules, setEnabledModules] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .settingsGet()
+      .then((s) => {
+        if (alive) setEnabledModules(s.enabledModules || []);
+      })
+      .catch(() => {
+        if (alive) setEnabledModules(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const navItems = useMemo(() => {
+    if (!enabledModules) return nav;
+    return nav.filter((item) => !item.moduleId || enabledModules.includes(item.moduleId));
+  }, [enabledModules]);
   const initials = (user?.name || user?.email || "?")
     .split(" ")
     .filter(Boolean)
@@ -76,8 +105,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 to="/parameters"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
-                aria-label="Parâmetros"
-                title="Parâmetros"
+                aria-label="Settings"
+                title="Settings"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                   <path
@@ -103,7 +132,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-6 md:grid-cols-[220px_1fr]">
         <aside className="hidden md:block">
           <nav className="rounded-xl border border-slate-200 bg-white p-2">
-            {nav
+            {navItems
               .filter((item) => {
                 if (item.adminOnly && !isAdminOrDev) return false;
                 if (item.driverOnly && !isDriver) return false;
@@ -131,7 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {mobileOpen ? (
           <div className="md:hidden">
             <nav className="rounded-xl border border-slate-200 bg-white p-2">
-              {nav
+            {navItems
                 .filter((item) => {
                   if (item.adminOnly && !isAdminOrDev) return false;
                   if (item.driverOnly && !isDriver) return false;

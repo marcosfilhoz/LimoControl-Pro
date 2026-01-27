@@ -7,6 +7,9 @@ type SettingsState = {
   ownerCompanyId?: string | null;
   logoDataUrl?: string | null;
   enabledModules: string[];
+  pdfCompany?: string | null;
+  pdfEmail?: string | null;
+  pdfPhone?: string | null;
 };
 
 const moduleOptions = [
@@ -43,6 +46,9 @@ export function ParametersPage() {
           ownerCompanyId: s.ownerCompanyId ?? null,
           logoDataUrl: s.logoDataUrl ?? null,
           enabledModules: s.enabledModules || [],
+          pdfCompany: s.pdfCompany ?? null,
+          pdfEmail: s.pdfEmail ?? null,
+          pdfPhone: s.pdfPhone ?? null,
         });
         setCompanies(c.map((item) => ({ id: item.id, name: item.name })));
       })
@@ -99,6 +105,9 @@ export function ParametersPage() {
         ownerCompanyId: settings.ownerCompanyId ?? null,
         logoDataUrl: settings.logoDataUrl ?? null,
         enabledModules: settings.enabledModules,
+        pdfCompany: settings.pdfCompany ?? null,
+        pdfEmail: settings.pdfEmail ?? null,
+        pdfPhone: settings.pdfPhone ?? null,
       });
       setSettings(updated);
       setSaved(true);
@@ -193,6 +202,39 @@ export function ParametersPage() {
                 {module.label}
               </label>
             ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-sm font-medium text-slate-700">PDF footer (US format)</div>
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <input
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
+              placeholder="Company"
+              value={settings.pdfCompany || ""}
+              onChange={(e) => {
+                setSettings({ ...settings, pdfCompany: e.target.value });
+                setSaved(false);
+              }}
+            />
+            <input
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
+              placeholder="Email"
+              value={settings.pdfEmail || ""}
+              onChange={(e) => {
+                setSettings({ ...settings, pdfEmail: e.target.value });
+                setSaved(false);
+              }}
+            />
+            <input
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
+              placeholder="Phone (US)"
+              value={settings.pdfPhone || ""}
+              onChange={(e) => {
+                setSettings({ ...settings, pdfPhone: e.target.value });
+                setSaved(false);
+              }}
+            />
           </div>
         </div>
 

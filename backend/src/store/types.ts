@@ -54,6 +54,9 @@ export interface AppSettings {
   ownerCompanyId?: string | null;
   logoDataUrl?: string | null;
   enabledModules: string[];
+  pdfCompany?: string | null;
+  pdfEmail?: string | null;
+  pdfPhone?: string | null;
   createdAt: string;
   updatedAt: string;
 }

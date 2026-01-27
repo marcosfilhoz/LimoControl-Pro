@@ -62,7 +62,7 @@ router.get("/", (req, res) => {
     // For admin and user, don't filter by createdByUserId either (they see all trips)
     // Only filter by createdByUserId for non-admin, non-user, non-driver roles (shouldn't happen)
     const filterCreatedByUserId = 
-      auth?.role === "admin" || auth?.role === "user" || auth?.role === "driver" 
+      auth?.role === "admin" || auth?.role === "dev" || auth?.role === "user" || auth?.role === "driver" 
         ? undefined 
         : auth?.userId;
     
@@ -146,7 +146,7 @@ router.put("/:id", (req, res) => {
   (async () => {
     const auth = (req as AuthedRequest).auth;
     if (!auth) return res.status(401).json({ error: "Unauthorized" });
-    if (auth.role !== "admin") {
+    if (auth.role !== "admin" && auth.role !== "dev") {
       const existing = await store.trips.get(req.params.id);
       if (!existing) return res.status(404).json({ error: "Trip not found" });
       if (existing.createdByUserId !== auth.userId) return res.status(403).json({ error: "Forbidden" });
@@ -186,7 +186,7 @@ router.patch("/:id/received", (req, res) => {
   (async () => {
     const auth = (req as AuthedRequest).auth;
     if (!auth) return res.status(401).json({ error: "Unauthorized" });
-    if (auth.role !== "admin") {
+    if (auth.role !== "admin" && auth.role !== "dev") {
       const existing = await store.trips.get(req.params.id);
       if (!existing) return res.status(404).json({ error: "Trip not found" });
       if (existing.createdByUserId !== auth.userId) return res.status(403).json({ error: "Forbidden" });
@@ -209,7 +209,7 @@ async function canUpdateTripStatus(tripId: string, auth: any): Promise<{ allowed
   if (!trip) return { allowed: false };
   
   // Admins can update any trip
-  if (auth.role === "admin") return { allowed: true, trip };
+  if (auth.role === "admin" || auth.role === "dev") return { allowed: true, trip };
   
   // Drivers can only update their own trips
   if (auth.role === "driver") {
@@ -334,7 +334,7 @@ router.delete("/:id", (req, res) => {
   (async () => {
     const auth = (req as AuthedRequest).auth;
     if (!auth) return res.status(401).json({ error: "Unauthorized" });
-    if (auth.role !== "admin") {
+    if (auth.role !== "admin" && auth.role !== "dev") {
       const existing = await store.trips.get(req.params.id);
       if (!existing) return res.status(404).json({ error: "Trip not found" });
       if (existing.createdByUserId !== auth.userId) return res.status(403).json({ error: "Forbidden" });
