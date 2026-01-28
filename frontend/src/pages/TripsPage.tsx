@@ -1037,9 +1037,11 @@ function exportTripPdf(
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const left = 25;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const contentWidth = pageWidth - 2 * left;
   let top = 40;
 
-  // Add logo if available
+  // Add logo if available (same horizontal bounds as rest of page)
   if (refs.logoDataUrl) {
     try {
       // Determine image format from data URL
@@ -1051,7 +1053,7 @@ function exportTripPdf(
       }
 
       const logoHeight = 90;
-      const maxLogoWidth = 350; // Max width to prevent logo from being too wide
+      const maxLogoWidth = contentWidth;
       
       // Create image element to get dimensions
       const img = document.createElement("img");
