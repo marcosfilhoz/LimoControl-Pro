@@ -1069,7 +1069,7 @@ function exportTripPdf(
       }
 
       doc.addImage(refs.logoDataUrl, imgFormat, left, top, logoWidth, logoHeight);
-      top += logoHeight + 15;
+      top += logoHeight + 5;
     } catch (e) {
       console.error("Error loading logo:", e);
       // Continue without logo if there's an error
