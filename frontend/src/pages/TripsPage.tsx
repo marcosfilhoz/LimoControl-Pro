@@ -1028,8 +1028,8 @@ function exportTripPdf(
         imgFormat = "PNG";
       }
 
-      const logoHeight = 55;
-      const maxLogoWidth = 200; // Max width to prevent logo from being too wide
+      const logoHeight = 65;
+      const maxLogoWidth = 250; // Max width to prevent logo from being too wide
       
       // Create image element to get dimensions
       const img = document.createElement("img");
@@ -1075,9 +1075,9 @@ function exportTripPdf(
 
   if (type === "client") {
     // Client PDF - Trip Confirmation with Vehicle Details in table format
-    doc.setFontSize(18);
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Trip Confirmation", left, top);
+    doc.text("Booking Confirmation", left, top);
 
     // CNF Number
     doc.setFontSize(10);
@@ -1195,9 +1195,9 @@ function exportTripPdf(
 
   // Driver PDF - Original detailed version
   // Title
-  doc.setFontSize(18);
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("Trip Details", left, top);
+  doc.text("Booking Details", left, top);
 
   // CNF Number (replacing ID)
   doc.setFontSize(10);
@@ -1206,18 +1206,18 @@ function exportTripPdf(
 
   // Prepare table data
   const tableData = [
+    ["Company", company],
+    ["Service Type", service],
     ["Date/Time", `${formatDate(trip.startAt)} ${formatTime(trip.startAt)}`],
     ["Payment Status", status],
-    ["Service Type", service],
     ["Hourly Time", hourlyTime],
     ["Driver", driver],
-    ["Client", client],
-    ["Phone Number", phone],
-    ["Company", company],
     ["Vehicle", vehicle],
     ["Vehicle Type", vehicleType],
-    ["Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—"],
+    ["Client", client],
     ["Meet & Greet", meetGreet],
+    ["Phone Number", phone],
+    ["Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—"],
     ["Pickup Address", trip.origin],
     ["Stop", trip.stop ? String(trip.stop) : "—"],
     ["Dropoff Address", trip.destination],
