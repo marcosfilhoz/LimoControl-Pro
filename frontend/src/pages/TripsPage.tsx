@@ -1036,7 +1036,7 @@ function exportTripPdf(
   type: "driver" | "client" = "driver",
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  const left = 40;
+  const left = 25;
   let top = 40;
 
   // Add logo if available
