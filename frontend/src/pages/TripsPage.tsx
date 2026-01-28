@@ -877,7 +877,7 @@ export function TripsPage() {
                     : "—"
                 }
               />
-              <Detail label="Vehicle Type" value={detailsTrip.vehicleType ? String(detailsTrip.vehicleType) : "—"} />
+              <Detail label="Job Type" value={detailsTrip.vehicleType ? String(detailsTrip.vehicleType) : "—"} />
               <Detail label="CNF" value={detailsTrip.cnf ? String(detailsTrip.cnf) : "—"} />
               <Detail label="Flight Number" value={detailsTrip.flightNumber ? String(detailsTrip.flightNumber) : "—"} />
               <Detail label="Meet & Greet" value={meetGreetLabel(detailsTrip.meetGreet)} />
@@ -1139,7 +1139,7 @@ function exportTripPdf(
     const clientAmount = trip.price;
     clientTableData.push(
       ["Vehicle", vehicle],
-      ["Vehicle Type", vehicleType],
+      ["Job Type", vehicleType],
       ["Driver", driver],
       ["Total Amount", `$${clientAmount.toFixed(2)}`],
     );
@@ -1216,15 +1216,15 @@ function exportTripPdf(
   const tableData = [
     ["Company", company],
     ["Service Type", service],
+    ["Job Type", vehicleType],
     ["Date/Time", `${formatDate(trip.startAt)} ${formatTime(trip.startAt)}`],
     ["Payment Status", status],
     ["Hourly Time", hourlyTime],
     ["Driver", driver],
     ["Vehicle", vehicle],
-    ["Vehicle Type", vehicleType],
     ["Client", client],
-    ["Meet & Greet", meetGreet],
     ["Phone Number", phone],
+    ["Meet & Greet", meetGreet],
     ["Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—"],
     ["Pickup Address", trip.origin],
     ["Stop", trip.stop ? String(trip.stop) : "—"],
