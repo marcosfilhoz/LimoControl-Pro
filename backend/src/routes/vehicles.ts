@@ -8,9 +8,8 @@ const vehicleSchema = z.object({
   name: z.string().min(2),
   brand: z.string().optional(),
   model: z.string().optional(),
-  year: z.number().int().optional(),
+  color: z.string().optional(),
   plate: z.string().optional(),
-  companyId: z.string(),
 });
 
 const activeSchema = z.object({
@@ -28,9 +27,6 @@ router.post("/", (req, res) => {
   (async () => {
     const parsed = vehicleSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-    if (!(await store.companies.exists(parsed.data.companyId))) {
-      return res.status(400).json({ error: "Company not found" });
-    }
     const vehicle = await store.vehicles.create(parsed.data as any);
     return res.status(201).json(vehicle);
   })().catch((err) => {
@@ -43,9 +39,6 @@ router.put("/:id", (req, res) => {
   (async () => {
     const parsed = vehicleSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-    if (!(await store.companies.exists(parsed.data.companyId))) {
-      return res.status(400).json({ error: "Company not found" });
-    }
     const out = await store.vehicles.update(req.params.id, parsed.data as any);
     if ("error" in out) return res.status(404).json({ error: out.error });
     return res.json(out.vehicle);

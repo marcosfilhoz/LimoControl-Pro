@@ -538,16 +538,15 @@ export const store = {
     async list(): Promise<Vehicle[]> {
       if (!pool) return memVehicles;
       const res = await pool.query(
-        `select id, name, brand, model, year, plate, company_id, active, created_at from vehicles order by created_at desc`
+        `select id, name, brand, model, color, plate, active, created_at from vehicles order by created_at desc`
       );
       return res.rows.map((r: any) => ({
         id: r.id,
         name: r.name,
         brand: r.brand ?? undefined,
         model: r.model ?? undefined,
-        year: r.year ?? undefined,
+        color: r.color ?? undefined,
         plate: r.plate ?? undefined,
-        companyId: r.company_id,
         active: !!r.active,
         createdAt: toIso(r.created_at),
       }));
@@ -560,7 +559,7 @@ export const store = {
     async get(id: string): Promise<Vehicle | null> {
       if (!pool) return memVehicles.find((v) => v.id === id) || null;
       const res = await pool.query(
-        `select id, name, brand, model, year, plate, company_id, active, created_at from vehicles where id=$1 limit 1`,
+        `select id, name, brand, model, color, plate, active, created_at from vehicles where id=$1 limit 1`,
         [id]
       );
       if (!res.rowCount) return null;
@@ -570,9 +569,8 @@ export const store = {
         name: r.name,
         brand: r.brand ?? undefined,
         model: r.model ?? undefined,
-        year: r.year ?? undefined,
+        color: r.color ?? undefined,
         plate: r.plate ?? undefined,
-        companyId: r.company_id,
         active: !!r.active,
         createdAt: toIso(r.created_at),
       };
@@ -585,10 +583,10 @@ export const store = {
       }
       const id = generateId("v");
       const res = await pool.query(
-        `insert into vehicles (id, name, brand, model, year, plate, company_id, active)
-         values ($1,$2,$3,$4,$5,$6,$7,true)
-         returning id, name, brand, model, year, plate, company_id, active, created_at`,
-        [id, input.name, input.brand ?? null, input.model ?? null, input.year ?? null, input.plate ?? null, input.companyId]
+        `insert into vehicles (id, name, brand, model, color, plate, active)
+         values ($1,$2,$3,$4,$5,$6,true)
+         returning id, name, brand, model, color, plate, active, created_at`,
+        [id, input.name, input.brand ?? null, input.model ?? null, input.color ?? null, input.plate ?? null]
       );
       const r = res.rows[0];
       return {
@@ -596,14 +594,13 @@ export const store = {
         name: r.name,
         brand: r.brand ?? undefined,
         model: r.model ?? undefined,
-        year: r.year ?? undefined,
+        color: r.color ?? undefined,
         plate: r.plate ?? undefined,
-        companyId: r.company_id,
         active: !!r.active,
         createdAt: toIso(r.created_at),
       };
     },
-    async update(id: string, input: { name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string }) {
+    async update(id: string, input: { name: string; brand?: string; model?: string; color?: string; plate?: string }) {
       if (!pool) {
         const idx = memVehicles.findIndex((v) => v.id === id);
         if (idx === -1) return { error: "Vehicle not found" as const };
@@ -611,10 +608,10 @@ export const store = {
         return { vehicle: memVehicles[idx] };
       }
       const res = await pool.query(
-        `update vehicles set name=$2, brand=$3, model=$4, year=$5, plate=$6, company_id=$7
+        `update vehicles set name=$2, brand=$3, model=$4, color=$5, plate=$6
          where id=$1
-         returning id, name, brand, model, year, plate, company_id, active, created_at`,
-        [id, input.name, input.brand ?? null, input.model ?? null, input.year ?? null, input.plate ?? null, input.companyId]
+         returning id, name, brand, model, color, plate, active, created_at`,
+        [id, input.name, input.brand ?? null, input.model ?? null, input.color ?? null, input.plate ?? null]
       );
       if (!res.rowCount) return { error: "Vehicle not found" as const };
       const r = res.rows[0];
@@ -624,9 +621,8 @@ export const store = {
           name: r.name,
           brand: r.brand ?? undefined,
           model: r.model ?? undefined,
-          year: r.year ?? undefined,
+          color: r.color ?? undefined,
           plate: r.plate ?? undefined,
-          companyId: r.company_id,
           active: !!r.active,
           createdAt: toIso(r.created_at),
         },
@@ -640,7 +636,7 @@ export const store = {
         return { vehicle: memVehicles[idx] };
       }
       const res = await pool.query(
-        `update vehicles set active=$2 where id=$1 returning id, name, brand, model, year, plate, company_id, active, created_at`,
+        `update vehicles set active=$2 where id=$1 returning id, name, brand, model, color, plate, active, created_at`,
         [id, active]
       );
       if (!res.rowCount) return { error: "Vehicle not found" as const };
@@ -651,9 +647,8 @@ export const store = {
           name: r.name,
           brand: r.brand ?? undefined,
           model: r.model ?? undefined,
-          year: r.year ?? undefined,
+          color: r.color ?? undefined,
           plate: r.plate ?? undefined,
-          companyId: r.company_id,
           active: !!r.active,
           createdAt: toIso(r.created_at),
         },
@@ -670,7 +665,7 @@ export const store = {
       const hasTrips = await pool.query(`select 1 from trips where vehicle_id=$1 limit 1`, [id]);
       if (hasTrips.rowCount) return { error: "Cannot delete vehicle with trips" as const, conflict: true as const };
       const res = await pool.query(
-        `delete from vehicles where id=$1 returning id, name, brand, model, year, plate, company_id, active, created_at`,
+        `delete from vehicles where id=$1 returning id, name, brand, model, color, plate, active, created_at`,
         [id]
       );
       if (!res.rowCount) return { error: "Vehicle not found" as const };
@@ -681,9 +676,8 @@ export const store = {
           name: r.name,
           brand: r.brand ?? undefined,
           model: r.model ?? undefined,
-          year: r.year ?? undefined,
+          color: r.color ?? undefined,
           plate: r.plate ?? undefined,
-          companyId: r.company_id,
           active: !!r.active,
           createdAt: toIso(r.created_at),
         },

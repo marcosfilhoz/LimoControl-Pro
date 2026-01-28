@@ -89,12 +89,12 @@ export const api = {
     request(`/companies/${id}/active`, { method: "PATCH", body: JSON.stringify({ active }) }),
 
   vehiclesList: () =>
-    request<Array<{ id: string; name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string; active: boolean }>>(
+    request<Array<{ id: string; name: string; brand?: string; model?: string; color?: string; plate?: string; active: boolean }>>(
       "/vehicles"
     ),
-  vehicleCreate: (data: { name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string }) =>
+  vehicleCreate: (data: { name: string; brand?: string; model?: string; color?: string; plate?: string }) =>
     request("/vehicles", { method: "POST", body: JSON.stringify(data) }),
-  vehicleUpdate: (id: string, data: { name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string }) =>
+  vehicleUpdate: (id: string, data: { name: string; brand?: string; model?: string; color?: string; plate?: string }) =>
     request(`/vehicles/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   vehicleDelete: (id: string) => request(`/vehicles/${id}`, { method: "DELETE" }),
   vehicleSetActive: (id: string, active: boolean) =>

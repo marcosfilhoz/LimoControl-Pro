@@ -120,7 +120,6 @@ router.post("/", (req, res) => {
     if (parsed.data.vehicleId) {
       const vehicle = await store.vehicles.get(parsed.data.vehicleId);
       if (!vehicle) return res.status(400).json({ error: "Vehicle not found" });
-      if (vehicle.companyId !== companyId) return res.status(400).json({ error: "Vehicle does not belong to company" });
     }
 
     let clientId: string | null = null;
@@ -160,7 +159,6 @@ router.put("/:id", (req, res) => {
     if (parsed.data.vehicleId) {
       const vehicle = await store.vehicles.get(parsed.data.vehicleId);
       if (!vehicle) return res.status(400).json({ error: "Vehicle not found" });
-      if (vehicle.companyId !== companyId) return res.status(400).json({ error: "Vehicle does not belong to company" });
     }
 
     let clientId: string | null = null;

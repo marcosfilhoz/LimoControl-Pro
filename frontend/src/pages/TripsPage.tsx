@@ -38,7 +38,7 @@ type Trip = {
 type Driver = { id: string; name: string };
 type Client = { id: string; name: string; phone?: string; address?: string; active: boolean };
 type Company = { id: string; name: string };
-type Vehicle = { id: string; name: string; brand?: string; model?: string; year?: number; plate?: string; companyId: string; active: boolean };
+type Vehicle = { id: string; name: string; brand?: string; model?: string; color?: string; plate?: string; active: boolean };
 type Settings = {
   enabledModules: string[];
   pdfCompany?: string | null;
@@ -96,6 +96,8 @@ export function TripsPage() {
   const [received, setReceived] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTrip, setDetailsTrip] = useState<Trip | null>(null);
+  const [driverPdfAmountModalOpen, setDriverPdfAmountModalOpen] = useState(false);
+  const [driverPdfAmount, setDriverPdfAmount] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -169,14 +171,9 @@ export function TripsPage() {
     [clients],
   );
 
-  const filteredVehicles = useMemo(() => {
-    if (!companyId) return [];
-    return vehicles.filter((v) => v.companyId === companyId);
-  }, [vehicles, companyId]);
-
   const vehicleOptions = useMemo(
-    () => filteredVehicles.map((v) => ({ id: v.id, label: formatVehicleLabel(v), disabled: v.active === false })),
-    [filteredVehicles],
+    () => vehicles.map((v) => ({ id: v.id, label: formatVehicleLabel(v), disabled: v.active === false })),
+    [vehicles],
   );
 
   useEffect(() => {
@@ -184,10 +181,10 @@ export function TripsPage() {
       setVehicleId("");
       return;
     }
-    if (vehicleId && !filteredVehicles.some((v) => v.id === vehicleId)) {
+    if (vehicleId && !vehicles.some((v) => v.id === vehicleId)) {
       setVehicleId("");
     }
-  }, [vehiclesEnabled, vehicleId, filteredVehicles]);
+  }, [vehiclesEnabled, vehicleId, vehicles]);
 
   const filterCompanyOptions = useMemo(
     () => [{ id: "", label: "All companies" }, ...companyOptions],
@@ -272,7 +269,7 @@ export function TripsPage() {
     const defaultCompanyId = companies.find((c: any) => c.active !== false)?.id || companies[0]?.id || "";
     setCompanyId(defaultCompanyId);
     const defaultVehicleId = vehiclesEnabled
-      ? vehicles.find((v) => v.companyId === defaultCompanyId && v.active !== false)?.id || ""
+      ? vehicles.find((v) => v.active !== false)?.id || ""
       : "";
     setVehicleId(defaultVehicleId);
     setTripType("transfer");
@@ -708,10 +705,6 @@ export function TripsPage() {
             valueId={companyId}
             onChangeId={(id) => {
               setCompanyId(id);
-              if (vehiclesEnabled) {
-                const firstVehicle = vehicles.find((v) => v.companyId === id && v.active !== false);
-                setVehicleId(firstVehicle?.id || "");
-              }
             }}
           />
 
@@ -722,7 +715,7 @@ export function TripsPage() {
                 className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
-                disabled={!companyId || vehicleOptions.length === 0}
+                disabled={vehicleOptions.length === 0}
               >
                 <option value="">No vehicle</option>
                 {vehicleOptions.map((v) => (
@@ -731,10 +724,8 @@ export function TripsPage() {
                   </option>
                 ))}
               </select>
-              {!companyId ? (
-                <div className="mt-1 text-xs text-slate-500">Select a company to load vehicles.</div>
-              ) : vehicleOptions.length === 0 ? (
-                <div className="mt-1 text-xs text-slate-500">No vehicles linked to this company.</div>
+              {vehicleOptions.length === 0 ? (
+                <div className="mt-1 text-xs text-slate-500">No vehicles available.</div>
               ) : null}
             </label>
           ) : null}
@@ -906,20 +897,10 @@ export function TripsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-                onClick={() =>
-                  exportTripPdf(detailsTrip, {
-                    driverById,
-                    clientById,
-                    companyById,
-                    vehicleById,
-                    logoDataUrl: settings?.logoDataUrl || null,
-                    footer: {
-                      company: settings?.pdfCompany || "",
-                      email: settings?.pdfEmail || "",
-                      phone: settings?.pdfPhone || "",
-                    },
-                  }, "driver")
-                }
+                onClick={() => {
+                  setDriverPdfAmount(String(detailsTrip.price.toFixed(2)));
+                  setDriverPdfAmountModalOpen(true);
+                }}
               >
                 Driver PDF
               </button>
@@ -972,6 +953,46 @@ export function TripsPage() {
           </div>
         ) : null}
       </Modal>
+
+      <Modal title="Driver PDF Amount" open={driverPdfAmountModalOpen} onClose={() => setDriverPdfAmountModalOpen(false)}>
+        <div className="space-y-4">
+          <Input
+            label="Amount ($)"
+            inputMode="decimal"
+            value={driverPdfAmount}
+            onChange={(e) => setDriverPdfAmount(e.target.value)}
+            placeholder="0.00"
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                if (detailsTrip) {
+                  const customAmount = driverPdfAmount.trim() ? Number(driverPdfAmount) : detailsTrip.price;
+                  exportTripPdf(detailsTrip, {
+                    driverById,
+                    clientById,
+                    companyById,
+                    vehicleById,
+                    logoDataUrl: settings?.logoDataUrl || null,
+                    footer: {
+                      company: settings?.pdfCompany || "",
+                      email: settings?.pdfEmail || "",
+                      phone: settings?.pdfPhone || "",
+                    },
+                    customDriverAmount: customAmount,
+                  }, "driver");
+                }
+                setDriverPdfAmountModalOpen(false);
+              }}
+            >
+              Generate PDF
+            </Button>
+            <Button variant="ghost" onClick={() => setDriverPdfAmountModalOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -988,9 +1009,9 @@ function meetGreetLabel(v: unknown) {
 function formatVehicleLabel(vehicle?: Vehicle | null) {
   if (!vehicle) return "";
   const base = vehicle.name || [vehicle.brand, vehicle.model].filter(Boolean).join(" ");
-  const year = vehicle.year ? String(vehicle.year) : "";
+  const color = vehicle.color ? vehicle.color : "";
   const plate = vehicle.plate ? `(${vehicle.plate})` : "";
-  return [base, year, plate].filter(Boolean).join(" ");
+  return [base, color, plate].filter(Boolean).join(" ");
 }
 
 function formatUsPhone(value: string) {
@@ -1010,6 +1031,7 @@ function exportTripPdf(
     vehicleById: Map<string, Vehicle>;
     logoDataUrl?: string | null;
     footer?: { company?: string; email?: string; phone?: string };
+    customDriverAmount?: number;
   },
   type: "driver" | "client" = "driver",
 ) {
@@ -1028,8 +1050,8 @@ function exportTripPdf(
         imgFormat = "PNG";
       }
 
-      const logoHeight = 65;
-      const maxLogoWidth = 250; // Max width to prevent logo from being too wide
+      const logoHeight = 90;
+      const maxLogoWidth = 350; // Max width to prevent logo from being too wide
       
       // Create image element to get dimensions
       const img = document.createElement("img");
@@ -1114,29 +1136,12 @@ function exportTripPdf(
       clientTableData.push(["Meet & Greet", meetGreet]);
     }
 
-    // Vehicle Information (highlighted section)
-    if (vehicleData) {
-      const vehicleInfo: string[] = [];
-      if (vehicleData.name) vehicleInfo.push(vehicleData.name);
-      if (vehicleData.brand || vehicleData.model) {
-        const brandModel = [vehicleData.brand, vehicleData.model].filter(Boolean).join(" ");
-        vehicleInfo.push(brandModel);
-      }
-      if (vehicleData.year) vehicleInfo.push(`Year: ${vehicleData.year}`);
-      if (vehicleData.plate) vehicleInfo.push(`Plate: ${vehicleData.plate}`);
-      if (vehicleType !== "—") vehicleInfo.push(`Type: ${vehicleType}`);
-
-      clientTableData.push(["Vehicle", vehicleInfo.join(" | ")]);
-    } else if (vehicle !== "—") {
-      clientTableData.push(["Vehicle", vehicle]);
-      if (vehicleType !== "—") {
-        clientTableData.push(["Vehicle Type", vehicleType]);
-      }
-    }
-
+    const clientAmount = trip.price;
     clientTableData.push(
+      ["Vehicle", vehicle],
+      ["Vehicle Type", vehicleType],
       ["Driver", driver],
-      ["Total Amount", `$${trip.price.toFixed(2)}`],
+      ["Total Amount", `$${clientAmount.toFixed(2)}`],
     );
 
     // Create table
@@ -1204,6 +1209,9 @@ function exportTripPdf(
   doc.setFont("helvetica", "normal");
   doc.text(`CNF: ${cnf}`, left, top + 20);
 
+  // Use custom amount for driver PDF if provided, otherwise use trip price
+  const driverAmount = refs.customDriverAmount !== undefined ? refs.customDriverAmount : trip.price;
+  
   // Prepare table data
   const tableData = [
     ["Company", company],
@@ -1221,7 +1229,7 @@ function exportTripPdf(
     ["Pickup Address", trip.origin],
     ["Stop", trip.stop ? String(trip.stop) : "—"],
     ["Dropoff Address", trip.destination],
-    ["Amount", `$ ${trip.price.toFixed(2)}`],
+    ["Amount", `$ ${driverAmount.toFixed(2)}`],
   ];
 
   // Create table

@@ -70,9 +70,8 @@ export async function initDbIfNeeded() {
       name text not null,
       brand text,
       model text,
-      year integer,
+      color text,
       plate text,
-      company_id text not null references companies(id) on delete restrict,
       active boolean not null default true,
       created_at timestamptz not null default now()
     );
@@ -377,6 +376,38 @@ export async function initDbIfNeeded() {
   await exec(`create index if not exists idx_trips_cnf on trips(cnf);`);
   await exec(`create index if not exists idx_trips_flight_number on trips(flight_number);`);
   await exec(`create index if not exists idx_trips_meet_greet on trips(meet_greet);`);
+
+  // Migration: Remove company_id from vehicles and change year to color
+  await exec(`
+    do $$
+    begin
+      -- Add color column if it doesn't exist
+      if not exists (select 1 from information_schema.columns where table_name='vehicles' and column_name='color') then
+        alter table vehicles add column color text;
+        raise notice 'Added color column to vehicles table';
+      end if;
+      
+      -- Remove company_id constraint and column if it exists
+      if exists (select 1 from information_schema.columns where table_name='vehicles' and column_name='company_id') then
+        -- Drop foreign key constraint first
+        if exists (
+          select 1 from information_schema.table_constraints
+          where table_name='vehicles' and constraint_name like '%company_id%'
+        ) then
+          alter table vehicles drop constraint if exists vehicles_company_id_fkey;
+        end if;
+        -- Drop the column
+        alter table vehicles drop column company_id;
+        raise notice 'Removed company_id column from vehicles table';
+      end if;
+      
+      -- Remove year column if it exists
+      if exists (select 1 from information_schema.columns where table_name='vehicles' and column_name='year') then
+        alter table vehicles drop column year;
+        raise notice 'Removed year column from vehicles table';
+      end if;
+    end $$;
+  `);
 
   // Seed an admin user if DB is empty
   const countRes = await pool.query<{ count: string }>(`select count(*)::text as count from users;`);

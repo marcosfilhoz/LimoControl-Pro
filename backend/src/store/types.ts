@@ -42,9 +42,8 @@ export interface Vehicle {
   name: string;
   brand?: string;
   model?: string;
-  year?: number;
+  color?: string;
   plate?: string;
-  companyId: string;
   active: boolean;
   createdAt: string;
 }

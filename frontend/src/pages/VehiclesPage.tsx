@@ -10,17 +10,14 @@ type Vehicle = {
   name: string;
   brand?: string;
   model?: string;
-  year?: number;
+  color?: string;
   plate?: string;
-  companyId: string;
   active: boolean;
 };
 
-type Company = { id: string; name: string; active: boolean };
 
 export function VehiclesPage() {
   const [items, setItems] = useState<Vehicle[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -29,9 +26,8 @@ export function VehiclesPage() {
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
-  const [year, setYear] = useState("");
+  const [color, setColor] = useState("");
   const [plate, setPlate] = useState("");
-  const [companyId, setCompanyId] = useState("");
 
   const [menu, setMenu] = useState<{ open: boolean; x: number; y: number; vehicle: Vehicle | null }>({
     open: false,
@@ -41,16 +37,14 @@ export function VehiclesPage() {
   });
 
   const activeCount = useMemo(() => items.filter((i) => i.active).length, [items]);
-  const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c.name])), [companies]);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    Promise.all([api.vehiclesList(), api.companiesList()])
-      .then(([v, c]) => {
+    api.vehiclesList()
+      .then((v) => {
         if (!alive) return;
         setItems(v);
-        setCompanies(c);
       })
       .catch(() => {
         if (alive) setError("Could not load vehicles.");
@@ -64,9 +58,8 @@ export function VehiclesPage() {
   }, []);
 
   async function refresh() {
-    const [v, c] = await Promise.all([api.vehiclesList(), api.companiesList()]);
+    const v = await api.vehiclesList();
     setItems(v);
-    setCompanies(c);
   }
 
   function openCreate() {
@@ -74,9 +67,8 @@ export function VehiclesPage() {
     setName("");
     setBrand("");
     setModel("");
-    setYear("");
+    setColor("");
     setPlate("");
-    setCompanyId(companies.find((c) => c.active)?.id || companies[0]?.id || "");
     setModalOpen(true);
   }
 
@@ -85,23 +77,20 @@ export function VehiclesPage() {
     setName(v.name);
     setBrand(v.brand || "");
     setModel(v.model || "");
-    setYear(v.year ? String(v.year) : "");
+    setColor(v.color || "");
     setPlate(v.plate || "");
-    setCompanyId(v.companyId);
     setModalOpen(true);
   }
 
   async function submit() {
     setError(null);
     try {
-      const yearValue = year.trim() ? Number(year) : undefined;
       const payload = {
         name,
         brand: brand.trim() || undefined,
         model: model.trim() || undefined,
-        year: Number.isNaN(yearValue) ? undefined : yearValue,
+        color: color.trim() || undefined,
         plate: plate.trim() || undefined,
-        companyId,
       };
       if (editing) {
         await api.vehicleUpdate(editing.id, payload);
@@ -155,10 +144,9 @@ export function VehiclesPage() {
           <div className="col-span-2">Vehicle</div>
           <div className="col-span-2">Brand</div>
           <div className="col-span-2">Model</div>
-          <div className="col-span-1">Year</div>
+          <div className="col-span-2">Color</div>
           <div className="col-span-2">Plate</div>
-          <div className="col-span-2">Company</div>
-          <div className="col-span-1">Status</div>
+          <div className="col-span-2">Status</div>
         </div>
         <div className="divide-y divide-slate-100">
           {items.map((v) => (
@@ -184,19 +172,15 @@ export function VehiclesPage() {
                   <div className="text-slate-600 md:hidden">Model</div>
                   <div className="text-slate-700">{v.model || "—"}</div>
                 </div>
-                <div className="md:col-span-1">
-                  <div className="text-slate-600 md:hidden">Year</div>
-                  <div className="text-slate-700">{v.year || "—"}</div>
+                <div className="md:col-span-2">
+                  <div className="text-slate-600 md:hidden">Color</div>
+                  <div className="text-slate-700">{v.color || "—"}</div>
                 </div>
                 <div className="md:col-span-2">
                   <div className="text-slate-600 md:hidden">Plate</div>
                   <div className="text-slate-700">{v.plate || "—"}</div>
                 </div>
                 <div className="md:col-span-2">
-                  <div className="text-slate-600 md:hidden">Company</div>
-                  <div className="text-slate-700">{companyById.get(v.companyId) || v.companyId}</div>
-                </div>
-                <div className="md:col-span-1">
                   <div className="text-slate-600 md:hidden">Status</div>
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
@@ -248,25 +232,11 @@ export function VehiclesPage() {
             <Input label="Model" value={model} onChange={(e) => setModel(e.target.value)} />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input label="Year" value={year} onChange={(e) => setYear(e.target.value)} />
+            <Input label="Color" value={color} onChange={(e) => setColor(e.target.value)} />
             <Input label="Plate" value={plate} onChange={(e) => setPlate(e.target.value)} />
           </div>
-          <label className="block">
-            <div className="mb-1 text-sm font-medium text-slate-700">Company</div>
-            <select
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
-              value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id} disabled={c.active === false}>
-                  {c.name} {c.active === false ? "(inactive)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
           <div className="flex gap-2">
-            <Button onClick={submit} disabled={!name.trim() || !companyId}>
+            <Button onClick={submit} disabled={!name.trim()}>
               Save
             </Button>
             <Button variant="ghost" onClick={() => setModalOpen(false)}>
