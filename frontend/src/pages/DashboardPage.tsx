@@ -741,7 +741,7 @@ export function DashboardPage() {
               </svg>
             </Button>
             {viewDropdownOpen ? (
-              <div className="absolute right-0 bottom-full left-0 z-10 mb-1 max-h-[70vh] min-w-[220px] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg md:bottom-auto md:left-auto md:mb-0 md:mt-1 md:max-h-[80vh] md:top-full">
+              <div className="absolute left-0 top-full z-10 mt-1 max-h-[70vh] min-w-[220px] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                 {dashboardViewOptions.map((opt) => (
                   <button
                     key={opt.id}
