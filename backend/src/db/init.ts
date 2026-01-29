@@ -377,6 +377,14 @@ export async function initDbIfNeeded() {
   await exec(`create index if not exists idx_trips_flight_number on trips(flight_number);`);
   await exec(`create index if not exists idx_trips_meet_greet on trips(meet_greet);`);
 
+  // Ensure Driver Payouts and Driver Closing Report modules are enabled for existing installs
+  await exec(`
+    update app_settings set enabled_modules = (
+      select array_agg(distinct e) from unnest(enabled_modules || array['driver-payouts-dashboard','driver-closing-report']) e
+    )
+    where id = 'main'
+      and not (enabled_modules @> array['driver-payouts-dashboard']);
+  `);
   await exec(`
     do $$
     begin

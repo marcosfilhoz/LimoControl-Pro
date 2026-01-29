@@ -805,6 +805,13 @@ export function TripsPage() {
           </div>
 
           <Input
+            label="Flight Details"
+            value={flightDetails}
+            onChange={(e) => setFlightDetails(e.target.value)}
+            placeholder="e.g., airline, arrival time, terminal"
+          />
+
+          <Input
             label="Meet & Greet"
             placeholder="e.g., greeter name / instructions..."
             value={meetGreet}
@@ -896,6 +903,7 @@ export function TripsPage() {
               <Detail label="Job Type" value={detailsTrip.vehicleType ? String(detailsTrip.vehicleType) : "—"} />
               <Detail label="CNF" value={detailsTrip.cnf ? String(detailsTrip.cnf) : "—"} />
               <Detail label="Flight Number" value={detailsTrip.flightNumber ? String(detailsTrip.flightNumber) : "—"} />
+              <Detail label="Flight Details" value={detailsTrip.flightDetails ? String(detailsTrip.flightDetails) : "—"} />
               <Detail label="Meet & Greet" value={meetGreetLabel(detailsTrip.meetGreet)} />
               <Detail label="Pickup Address" value={detailsTrip.origin} />
               <Detail label="Dropoff Address" value={detailsTrip.destination} />
@@ -1097,15 +1105,12 @@ function exportTripPdf(
     doc.setFont("helvetica", "normal");
     doc.text(`CNF: ${cnf}`, left, top + 20);
 
-    // Prepare table data for client PDF
+    // Prepare table data for client PDF (single place per field, no duplication)
     const clientTableData: string[][] = [
       ["Date", formatDate(trip.startAt)],
       ["Time", formatTime(trip.startAt)],
       ["Service Type", service],
-      ["Job Type", vehicleType],
-      
-["Vehicle", vehicle],
-      ["Driver", driver],    ];
+    ];
 
     if (hourlyTime !== "—") {
       clientTableData.push(["Duration", hourlyTime]);
@@ -1134,12 +1139,11 @@ function exportTripPdf(
       clientTableData.push(["Meet & Greet", meetGreet]);
     }
 
-    const clientAmount = trip.price;
     clientTableData.push(
       ["Vehicle", vehicle],
       ["Job Type", vehicleType],
       ["Driver", driver],
-      ["Total Amount", `$${clientAmount.toFixed(2)}`],
+      ["Total Amount", `$${trip.price.toFixed(2)}`],
     );
 
     // Create table
