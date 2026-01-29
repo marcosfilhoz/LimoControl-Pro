@@ -75,7 +75,10 @@ export function DriverPayoutsDashboardPage() {
 
   const driverById = useMemo(() => new Map(drivers.map((d) => [d.id, d.name])), [drivers]);
   const driverOptions = useMemo(
-    () => [{ id: "", label: "All drivers" }, ...drivers.map((d) => ({ id: d.id, label: d.name, disabled: !d.active }))],
+    (): Array<{ id: string; label: string; disabled?: boolean }> => [
+      { id: "", label: "All drivers" },
+      ...drivers.map((d) => ({ id: d.id, label: d.name, disabled: !d.active })),
+    ],
     [drivers],
   );
 
@@ -197,9 +200,8 @@ export function DriverPayoutsDashboardPage() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="mb-3 text-sm font-semibold text-slate-900">Payouts by driver</div>
             {driverPayouts.length > 0 ? (
-              <BarList items={barItems} />
+              <BarList title="Payouts by driver" items={barItems} />
             ) : (
               <div className="text-sm text-slate-600">No payouts for this filter.</div>
             )}
