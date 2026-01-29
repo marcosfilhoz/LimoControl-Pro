@@ -15,8 +15,6 @@ type SettingsState = {
 const moduleOptions = [
   { id: "home", label: "Home" },
   { id: "dashboard", label: "Dashboard" },
-  { id: "driver-payouts-dashboard", label: "Driver Payouts" },
-  { id: "driver-closing-report", label: "Driver Closing Report" },
   { id: "driver-trips", label: "Driver Trips" },
   { id: "trips", label: "Trips" },
   { id: "drivers", label: "Drivers" },

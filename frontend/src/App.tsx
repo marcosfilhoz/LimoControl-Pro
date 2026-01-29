@@ -5,8 +5,6 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { AppShell } from "./layout/AppShell";
 import { ClientsPage } from "./pages/ClientsPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { DriverClosingReportPage } from "./pages/DriverClosingReportPage";
-import { DriverPayoutsDashboardPage } from "./pages/DriverPayoutsDashboardPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
@@ -34,8 +32,6 @@ export function App() {
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/driver-payouts-dashboard" element={<DriverPayoutsDashboardPage />} />
-                  <Route path="/driver-closing-report" element={<DriverClosingReportPage />} />
                   <Route path="/rides-funnel" element={<DriverTripsPage />} />
                   <Route path="/trips" element={<TripsPage />} />
                   <Route path="/drivers" element={<DriversPage />} />

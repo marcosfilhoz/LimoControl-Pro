@@ -31,6 +31,7 @@ export function DashboardPage() {
       miles: number;
       durationMinutes: number;
       price: number;
+      driverValue?: number | null;
       received: boolean;
       notes?: string;
     }>
@@ -41,7 +42,18 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [page, setPage] = useState<"summary" | "hourly-analysis" | "report-trips" | "report-cnf" | "top-drivers" | "top-companies" | "top-clients" | "vehicle-analysis">("summary");
+  type DashboardTab =
+    | "summary"
+    | "report-trips"
+    | "report-cnf"
+    | "driver-closing-report"
+    | "driver-payouts"
+    | "hourly-analysis"
+    | "top-drivers"
+    | "top-companies"
+    | "top-clients"
+    | "vehicle-analysis";
+  const [page, setPage] = useState<DashboardTab>("summary");
 
   // filters
   const [filterWeek, setFilterWeek] = useState("");
@@ -200,6 +212,61 @@ export function DashboardPage() {
       .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   }, [filteredTrips, clientById]);
 
+  const driverPayoutsData = useMemo(() => {
+    const byDriver = new Map<string, { name: string; tripCount: number; totalPayout: number }>();
+    for (const t of filteredTrips) {
+      const payout = t.driverValue != null ? Number(t.driverValue) : t.price;
+      const name = driverById.get(t.driverId) || t.driverId;
+      if (!byDriver.has(t.driverId)) {
+        byDriver.set(t.driverId, { name, tripCount: 0, totalPayout: 0 });
+      }
+      const row = byDriver.get(t.driverId)!;
+      row.tripCount += 1;
+      row.totalPayout += payout;
+    }
+    return Array.from(byDriver.entries())
+      .map(([driverId, data]) => ({ driverId, ...data }))
+      .sort((a, b) => b.totalPayout - a.totalPayout);
+  }, [filteredTrips, driverById]);
+
+  const driverPayoutsSummary = useMemo(() => {
+    let totalPayout = 0;
+    for (const t of filteredTrips) {
+      totalPayout += t.driverValue != null ? Number(t.driverValue) : t.price;
+    }
+    return { totalTrips: filteredTrips.length, totalPayout };
+  }, [filteredTrips]);
+
+  const driverPayoutsBarItems = useMemo(
+    () =>
+      driverPayoutsData.map((d) => ({
+        label: d.name,
+        value: d.totalPayout,
+        href: "#",
+      })),
+    [driverPayoutsData],
+  );
+
+  const driverClosingReportRows = useMemo(() => {
+    return filteredTrips
+      .slice()
+      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+      .map((t) => {
+        const driverValue = t.driverValue != null ? Number(t.driverValue) : t.price;
+        return {
+          id: t.id,
+          date: formatDate(t.startAt),
+          time: formatTime(t.startAt),
+          driver: driverById.get(t.driverId) || t.driverId,
+          client: t.clientId ? clientById.get(t.clientId) || t.clientId : "—",
+          company: companyById.get(t.companyId) || t.companyId,
+          route: `${t.origin} → ${t.destination}`,
+          received: t.received ? "Paid" : "Unpaid",
+          value: driverValue,
+        };
+      });
+  }, [filteredTrips, driverById, clientById, companyById]);
+
   function exportPdf() {
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
     const title = "Trips Report";
@@ -343,6 +410,75 @@ export function DashboardPage() {
     doc.save(fileName);
   }
 
+  function exportDriverClosingPdf() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const title = "Driver Closing Report";
+    const periodLabel = filterWeek
+      ? weekLabel(filterWeek, filterFrom, filterTo)
+      : filterMonth
+        ? monthLabel(filterMonth, filterFrom, filterTo)
+        : filterFrom || filterTo
+          ? `${filterFrom || "—"} to ${filterTo || "—"}`
+          : "All";
+    const clientLabel = filterClientQuery.trim() ? filterClientQuery.trim() : "All";
+    const companyLabel = filterCompanyId ? companyById.get(filterCompanyId) || filterCompanyId : "All";
+    const driverLabel = filterDriverId ? driverById.get(filterDriverId) || filterDriverId : "All";
+    const receivedLabel =
+      filterReceived === "received" ? "Paid" : filterReceived === "not_received" ? "Unpaid" : "All";
+    doc.setFontSize(14);
+    doc.text(title, 40, 40);
+    doc.setFontSize(10);
+    doc.text(
+      `Period: ${periodLabel} | Client: ${clientLabel} | Driver: ${driverLabel} | Company: ${companyLabel} | Payment: ${receivedLabel}`,
+      40,
+      60,
+    );
+    const head = [["Date", "Time", "Driver", "Client", "Company", "Origin -> Destination", "Paid", "Driver amount ($)"]];
+    const body = driverClosingReportRows.map((r) => [
+      r.date,
+      r.time,
+      r.driver,
+      r.client,
+      r.company,
+      r.route.replace("→", "->"),
+      r.received,
+      r.value.toFixed(2),
+    ]);
+    const totalValue = driverClosingReportRows.reduce((acc, r) => acc + r.value, 0);
+    const totalReceived = driverClosingReportRows.filter((r) => r.received === "Paid").reduce((acc, r) => acc + r.value, 0);
+    const totalNotReceived = totalValue - totalReceived;
+    autoTable(doc, {
+      head,
+      body,
+      startY: 80,
+      margin: { left: 40, right: 40 },
+      styles: { fontSize: 8.5, cellPadding: 4, overflow: "linebreak" },
+      headStyles: { fillColor: [15, 23, 42] },
+      columnStyles: {
+        0: { cellWidth: 55 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 95 },
+        3: { cellWidth: 95 },
+        4: { cellWidth: 105 },
+        5: { cellWidth: 210 },
+        6: { cellWidth: 65 },
+        7: { halign: "right", cellWidth: 55 },
+      },
+      didDrawPage: (data) => {
+        const pageCount = doc.getNumberOfPages();
+        doc.setFontSize(9);
+        doc.text(`Page ${data.pageNumber} of ${pageCount}`, doc.internal.pageSize.getWidth() - 90, doc.internal.pageSize.getHeight() - 20);
+      },
+    });
+    const finalY = (doc as any).lastAutoTable?.finalY || 80;
+    doc.setFontSize(10);
+    doc.text(
+      `Total: $ ${totalValue.toFixed(2)} | Paid: $ ${totalReceived.toFixed(2)} | Unpaid: $ ${totalNotReceived.toFixed(2)}`,
+      40,
+      finalY + 24,
+    );
+    doc.save(`driver_closing_report_${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
 
   const summary = useMemo(() => {
     const totalTrips = filteredTrips.length;
@@ -559,32 +695,51 @@ export function DashboardPage() {
             Filters by period, client, and company. Showing {filteredTrips.length}/{trips.length} trips.
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant={page === "summary" ? "primary" : "ghost"} onClick={() => setPage("summary")}>
-            Summary
-          </Button>
-          <Button variant={page === "hourly-analysis" ? "primary" : "ghost"} onClick={() => setPage("hourly-analysis")}>
-            Hourly Analysis
-          </Button>
-          <Button variant={page === "report-trips" ? "primary" : "ghost"} onClick={() => setPage("report-trips")}>
-            Trips Report
-          </Button>
-          <Button variant={page === "report-cnf" ? "primary" : "ghost"} onClick={() => setPage("report-cnf")}>
-            CNF Report
-          </Button>
-          <Button variant={page === "top-drivers" ? "primary" : "ghost"} onClick={() => setPage("top-drivers")}>
-            TOP Drivers
-          </Button>
-          <Button variant={page === "top-companies" ? "primary" : "ghost"} onClick={() => setPage("top-companies")}>
-            TOP Companies
-          </Button>
-          <Button variant={page === "top-clients" ? "primary" : "ghost"} onClick={() => setPage("top-clients")}>
-            TOP Clients
-          </Button>
-          <Button variant={page === "vehicle-analysis" ? "primary" : "ghost"} onClick={() => setPage("vehicle-analysis")}>
-            Vehicle Analysis
-          </Button>
-          <Button
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500">Overview</span>
+            <Button variant={page === "summary" ? "primary" : "ghost"} onClick={() => setPage("summary")}>
+              Summary
+            </Button>
+            <Button variant={page === "hourly-analysis" ? "primary" : "ghost"} onClick={() => setPage("hourly-analysis")}>
+              Hourly Analysis
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500">Reports</span>
+            <Button variant={page === "report-trips" ? "primary" : "ghost"} onClick={() => setPage("report-trips")}>
+              Trips Report
+            </Button>
+            <Button variant={page === "report-cnf" ? "primary" : "ghost"} onClick={() => setPage("report-cnf")}>
+              CNF Report
+            </Button>
+            <Button variant={page === "driver-closing-report" ? "primary" : "ghost"} onClick={() => setPage("driver-closing-report")}>
+              Driver Closing Report
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500">Driver</span>
+            <Button variant={page === "driver-payouts" ? "primary" : "ghost"} onClick={() => setPage("driver-payouts")}>
+              Driver Payouts
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500">Analysis</span>
+            <Button variant={page === "top-drivers" ? "primary" : "ghost"} onClick={() => setPage("top-drivers")}>
+              TOP Drivers
+            </Button>
+            <Button variant={page === "top-companies" ? "primary" : "ghost"} onClick={() => setPage("top-companies")}>
+              TOP Companies
+            </Button>
+            <Button variant={page === "top-clients" ? "primary" : "ghost"} onClick={() => setPage("top-clients")}>
+              TOP Clients
+            </Button>
+            <Button variant={page === "vehicle-analysis" ? "primary" : "ghost"} onClick={() => setPage("vehicle-analysis")}>
+              Vehicle Analysis
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-2">
+            <Button
             variant="ghost"
             onClick={() => {
               setFilterWeek("");
@@ -970,6 +1125,119 @@ export function DashboardPage() {
               {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
               {!loading && cnfReportRows.length === 0 ? (
                 <div className="p-3 text-sm text-slate-600">No CNF rows for this filter.</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {page === "driver-closing-report" ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-600">
+              Report by trip using driver value (amount paid to driver). Rows:{" "}
+              <span className="font-medium text-slate-900">{driverClosingReportRows.length}</span>
+            </div>
+            <Button onClick={exportDriverClosingPdf} disabled={driverClosingReportRows.length === 0}>
+              Export PDF
+            </Button>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div className="col-span-2">Date/Time</div>
+              <div className="col-span-2">Driver</div>
+              <div className="col-span-2">Client</div>
+              <div className="col-span-2">Company</div>
+              <div className="col-span-2">Origin → Destination</div>
+              <div className="col-span-1">Paid</div>
+              <div className="col-span-1 text-right">Driver amount</div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {driverClosingReportRows.map((r) => (
+                <div key={r.id} className="p-3">
+                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Date/Time</div>
+                      <div className="font-medium">{r.date}</div>
+                      <div className="text-xs text-slate-600">{r.time}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Driver</div>
+                      <div className="truncate">{r.driver}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Client</div>
+                      <div className="truncate">{r.client}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Company</div>
+                      <div className="truncate">{r.company}</div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="text-slate-600 md:hidden">Origin → Destination</div>
+                      <div className="truncate">{r.route}</div>
+                    </div>
+                    <div className="md:col-span-1">
+                      <div className="text-slate-600 md:hidden">Paid</div>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                          r.received === "Paid"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}
+                      >
+                        {r.received}
+                      </span>
+                    </div>
+                    <div className="md:col-span-1 md:text-right">
+                      <div className="text-slate-600 md:hidden">Driver amount</div>
+                      <div className="font-medium">$ {r.value.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
+              {!loading && driverClosingReportRows.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No trips for this filter.</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {page === "driver-payouts" ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-sm font-medium text-slate-600">Total trips</div>
+              <div className="text-2xl font-semibold text-slate-900">{driverPayoutsSummary.totalTrips}</div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-sm font-medium text-slate-600">Total driver payouts</div>
+              <div className="text-2xl font-semibold text-slate-900">$ {driverPayoutsSummary.totalPayout.toFixed(2)}</div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            {driverPayoutsData.length > 0 ? (
+              <BarList title="Payouts by driver" items={driverPayoutsBarItems} />
+            ) : (
+              <div className="text-sm text-slate-600">No payouts for this filter.</div>
+            )}
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium">Driver breakdown</div>
+            <div className="divide-y divide-slate-100">
+              {driverPayoutsData.map((d) => (
+                <div key={d.driverId} className="flex items-center justify-between p-3 text-sm">
+                  <div>
+                    <div className="font-medium text-slate-900">{d.name}</div>
+                    <div className="text-xs text-slate-600">{d.tripCount} trip(s)</div>
+                  </div>
+                  <div className="font-medium text-slate-900">$ {d.totalPayout.toFixed(2)}</div>
+                </div>
+              ))}
+              {!loading && driverPayoutsData.length === 0 ? (
+                <div className="p-3 text-sm text-slate-600">No drivers with payouts for this filter.</div>
               ) : null}
             </div>
           </div>
