@@ -1110,6 +1110,9 @@ function exportTripPdf(
       ["Date", formatDate(trip.startAt)],
       ["Time", formatTime(trip.startAt)],
       ["Service Type", service],
+      ["Job Type", vehicleType],
+      ["Vehicle", vehicle],
+
     ];
 
     if (hourlyTime !== "—") {
@@ -1119,30 +1122,17 @@ function exportTripPdf(
     clientTableData.push(
       ["Client Name", client],
       ["Phone Number", phone],
-      ["Pickup Address", trip.origin],
-      ["Dropoff Address", trip.destination],
-    );
-
+      ["Pickup Address", trip.origin],);
     if (trip.stop) {
       clientTableData.push(["Stop", trip.stop]);
     }
-
-    if (trip.flightNumber) {
-      clientTableData.push(["Flight Number", trip.flightNumber]);
-    }
-
-    if (trip.flightDetails) {
-      clientTableData.push(["Flight Details", trip.flightDetails]);
-    }
+    clientTableData.push(["Dropoff Address", trip.destination]);
 
     if (meetGreet !== "—") {
       clientTableData.push(["Meet & Greet", meetGreet]);
     }
 
     clientTableData.push(
-      ["Vehicle", vehicle],
-      ["Job Type", vehicleType],
-      ["Driver", driver],
       ["Total Amount", `$${trip.price.toFixed(2)}`],
     );
 
