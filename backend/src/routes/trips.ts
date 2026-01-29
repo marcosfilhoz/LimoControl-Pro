@@ -20,6 +20,7 @@ const tripSchema = z.object({
   vehicleType: z.enum(["SUV", "Sedan", "Economy", "First Class"]).nullable().optional(),
   cnf: z.string().optional(),
   flightNumber: z.string().optional(),
+  flightDetails: z.string().optional(),
   meetGreet: z.string().optional(),
   startAt: z.string(),
   endAt: z.string(),
@@ -29,6 +30,7 @@ const tripSchema = z.object({
   miles: z.number().nonnegative(),
   durationMinutes: z.number().nonnegative(),
   price: z.number().nonnegative(),
+  driverValue: z.number().nonnegative().optional().nullable(),
   received: z.boolean().optional(),
   notes: z.string().optional(),
 });

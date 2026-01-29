@@ -28,7 +28,7 @@ function toNum(v: any) {
   return Number(v);
 }
 
-const defaultModules = ["dashboard", "trips", "drivers", "clients", "companies", "users", "driver-trips", "home"];
+const defaultModules = ["dashboard", "trips", "drivers", "clients", "companies", "users", "driver-trips", "driver-payouts-dashboard", "driver-closing-report", "home"];
 
 function toSettings(row: any): AppSettings {
   return {
@@ -755,7 +755,7 @@ export const store = {
         where.push(`meet_greet ilike $${params.length}`);
       }
       const sql =
-        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at from trips` +
+        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, flight_details, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, driver_value, received, status, started_at, finished_at, notes, created_at from trips` +
         (where.length ? ` where ${where.join(" and ")}` : "") +
         ` order by start_at desc`;
       console.log(`[Store] Executing query: ${sql}`, params);
@@ -774,6 +774,7 @@ export const store = {
         vehicleType: r.vehicle_type ?? null,
         cnf: r.cnf ?? undefined,
         flightNumber: r.flight_number ?? undefined,
+        flightDetails: r.flight_details ?? undefined,
         meetGreet: typeof r.meet_greet === "string" && r.meet_greet.trim() ? r.meet_greet : undefined,
         clientPhone: typeof r.client_phone === "string" && r.client_phone.trim() ? r.client_phone : undefined,
         startAt: toIso(r.start_at),
@@ -784,6 +785,7 @@ export const store = {
         miles: toNum(r.miles),
         durationMinutes: toNum(r.duration_minutes),
         price: toNum(r.price),
+        driverValue: r.driver_value != null ? toNum(r.driver_value) : undefined,
         received: !!r.received,
         status: (r.status || "pending") as TripStatus,
         startedAt: r.started_at ? toIso(r.started_at) : undefined,
@@ -798,7 +800,7 @@ export const store = {
         return memTrips.find((t) => t.id === id) || null;
       }
       const res = await pool.query(
-        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at
+        `select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, flight_details, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, driver_value, received, status, started_at, finished_at, notes, created_at
          from trips where id=$1 limit 1`,
         [id]
       );
@@ -817,6 +819,8 @@ export const store = {
         vehicleType: r.vehicle_type ?? null,
         cnf: r.cnf ?? undefined,
         flightNumber: r.flight_number ?? undefined,
+        flightDetails: r.flight_details ?? undefined,
+        flightDetails: r.flight_details ?? undefined,
         meetGreet: typeof r.meet_greet === "string" && r.meet_greet.trim() ? r.meet_greet : undefined,
         clientPhone: typeof r.client_phone === "string" && r.client_phone.trim() ? r.client_phone : undefined,
         startAt: toIso(r.start_at),
@@ -827,6 +831,7 @@ export const store = {
         miles: toNum(r.miles),
         durationMinutes: toNum(r.duration_minutes),
         price: toNum(r.price),
+        driverValue: r.driver_value != null ? toNum(r.driver_value) : undefined,
         received: !!r.received,
         status: (r.status || "pending") as TripStatus,
         startedAt: r.started_at ? toIso(r.started_at) : undefined,
@@ -852,9 +857,9 @@ export const store = {
       }
       const id = generateId("t");
       const res = await pool.query(
-        `insert into trips (id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, notes)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
-         returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
+        `insert into trips (id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, flight_details, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, driver_value, received, status, notes)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+         returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, flight_details, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, driver_value, received, status, started_at, finished_at, notes, created_at`,
         [
           id,
           createdByUserId,
@@ -868,6 +873,7 @@ export const store = {
           input.vehicleType ?? null,
           input.cnf ?? null,
           input.flightNumber ?? null,
+          (input as any).flightDetails ?? null,
           input.meetGreet ?? "",
           input.clientPhone ?? null,
           input.startAt,
@@ -878,6 +884,7 @@ export const store = {
           input.miles,
           input.durationMinutes,
           input.price,
+          (input as any).driverValue ?? null,
           input.received ?? false,
           input.status ?? "pending",
           input.notes ?? null,
@@ -897,6 +904,7 @@ export const store = {
         vehicleType: r.vehicle_type ?? null,
         cnf: r.cnf ?? undefined,
         flightNumber: r.flight_number ?? undefined,
+        flightDetails: r.flight_details ?? undefined,
         meetGreet: typeof r.meet_greet === "string" && r.meet_greet.trim() ? r.meet_greet : undefined,
         clientPhone: typeof r.client_phone === "string" && r.client_phone.trim() ? r.client_phone : undefined,
         startAt: toIso(r.start_at),
@@ -907,6 +915,7 @@ export const store = {
         miles: toNum(r.miles),
         durationMinutes: toNum(r.duration_minutes),
         price: toNum(r.price),
+        driverValue: r.driver_value != null ? toNum(r.driver_value) : undefined,
         received: !!r.received,
         status: (r.status || "pending") as TripStatus,
         startedAt: r.started_at ? toIso(r.started_at) : undefined,
@@ -979,6 +988,11 @@ export const store = {
         params.push(input.flightNumber ?? null);
         paramIndex++;
       }
+      if (input.flightDetails !== undefined) {
+        updates.push(`flight_details = $${paramIndex}`);
+        params.push(input.flightDetails ?? null);
+        paramIndex++;
+      }
       if (input.clientPhone !== undefined) {
         updates.push(`client_phone = coalesce($${paramIndex}, client_phone)`);
         params.push(input.clientPhone ?? null);
@@ -1029,6 +1043,11 @@ export const store = {
         params.push(input.price);
         paramIndex++;
       }
+      if (input.driverValue !== undefined) {
+        updates.push(`driver_value = $${paramIndex}`);
+        params.push(input.driverValue ?? null);
+        paramIndex++;
+      }
       if (input.received !== undefined) {
         updates.push(`received = coalesce($${paramIndex}, received)`);
         params.push(input.received ?? null);
@@ -1057,7 +1076,7 @@ export const store = {
       
       if (updates.length === 0) {
         // No updates, just return the current trip
-        const res = await pool.query(`select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at from trips where id=$1`, [id]);
+        const res = await pool.query(`select id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, flight_details, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, driver_value, received, status, started_at, finished_at, notes, created_at from trips where id=$1`, [id]);
         if (!res.rowCount) return { error: "Trip not found" as const };
         const r = res.rows[0];
         return {
@@ -1074,6 +1093,7 @@ export const store = {
             vehicleType: r.vehicle_type ?? null,
             cnf: r.cnf ?? undefined,
             flightNumber: r.flight_number ?? undefined,
+            flightDetails: r.flight_details ?? undefined,
             meetGreet: typeof r.meet_greet === "string" && r.meet_greet.trim() ? r.meet_greet : undefined,
             clientPhone: typeof r.client_phone === "string" && r.client_phone.trim() ? r.client_phone : undefined,
             startAt: toIso(r.start_at),
@@ -1084,6 +1104,7 @@ export const store = {
             miles: toNum(r.miles),
             durationMinutes: toNum(r.duration_minutes),
             price: toNum(r.price),
+            driverValue: r.driver_value != null ? toNum(r.driver_value) : undefined,
             received: !!r.received,
             status: (r.status || "pending") as TripStatus,
             startedAt: r.started_at ? toIso(r.started_at) : undefined,
@@ -1095,7 +1116,7 @@ export const store = {
       }
       
       const res = await pool.query(
-        `update trips set ${updates.join(", ")} where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
+        `update trips set ${updates.join(", ")} where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, flight_details, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, driver_value, received, status, started_at, finished_at, notes, created_at`,
         params
       );
       if (!res.rowCount) return { error: "Trip not found" as const };
@@ -1114,6 +1135,7 @@ export const store = {
           vehicleType: r.vehicle_type ?? null,
           cnf: r.cnf ?? undefined,
           flightNumber: r.flight_number ?? undefined,
+          flightDetails: r.flight_details ?? undefined,
           meetGreet: typeof r.meet_greet === "string" && r.meet_greet.trim() ? r.meet_greet : undefined,
           clientPhone: typeof r.client_phone === "string" && r.client_phone.trim() ? r.client_phone : undefined,
           startAt: toIso(r.start_at),
@@ -1124,6 +1146,7 @@ export const store = {
           miles: toNum(r.miles),
           durationMinutes: toNum(r.duration_minutes),
           price: toNum(r.price),
+          driverValue: r.driver_value != null ? toNum(r.driver_value) : undefined,
           received: !!r.received,
           status: (r.status || "pending") as TripStatus,
           startedAt: r.started_at ? toIso(r.started_at) : undefined,
@@ -1142,7 +1165,7 @@ export const store = {
         return { trip: memTrips[idx] };
       }
       const res = await pool.query(
-        `update trips set received=$2 where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
+        `update trips set received=$2 where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, flight_details, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, driver_value, received, status, started_at, finished_at, notes, created_at`,
         [id, received]
       );
       if (!res.rowCount) return { error: "Trip not found" as const };
@@ -1161,6 +1184,7 @@ export const store = {
           vehicleType: r.vehicle_type ?? null,
           cnf: r.cnf ?? undefined,
           flightNumber: r.flight_number ?? undefined,
+          flightDetails: r.flight_details ?? undefined,
           meetGreet: typeof r.meet_greet === "string" && r.meet_greet.trim() ? r.meet_greet : undefined,
           clientPhone: typeof r.client_phone === "string" && r.client_phone.trim() ? r.client_phone : undefined,
           startAt: toIso(r.start_at),
@@ -1171,6 +1195,7 @@ export const store = {
           miles: toNum(r.miles),
           durationMinutes: toNum(r.duration_minutes),
           price: toNum(r.price),
+          driverValue: r.driver_value != null ? toNum(r.driver_value) : undefined,
           received: !!r.received,
           status: (r.status || "pending") as TripStatus,
           startedAt: r.started_at ? toIso(r.started_at) : undefined,
@@ -1193,7 +1218,7 @@ export const store = {
       if (!res.rowCount) return { error: "Trip not found" as const };
       if (res.rows[0].received) return { error: "Cannot delete a received trip" as const, conflict: true as const };
       const del = await pool.query(
-        `delete from trips where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, received, status, started_at, finished_at, notes, created_at`,
+        `delete from trips where id=$1 returning id, created_by_user_id, driver_id, client_id, company_id, vehicle_id, trip_type, hourly_start_time, hourly_end_time, vehicle_type, cnf, flight_number, flight_details, meet_greet, client_phone, start_at, end_at, origin, destination, stop, miles, duration_minutes, price, driver_value, received, status, started_at, finished_at, notes, created_at`,
         [id]
       );
       const r = del.rows[0];
@@ -1211,6 +1236,7 @@ export const store = {
           vehicleType: r.vehicle_type ?? null,
           cnf: r.cnf ?? undefined,
           flightNumber: r.flight_number ?? undefined,
+          flightDetails: r.flight_details ?? undefined,
           meetGreet: typeof r.meet_greet === "string" && r.meet_greet.trim() ? r.meet_greet : undefined,
           clientPhone: typeof r.client_phone === "string" && r.client_phone.trim() ? r.client_phone : undefined,
           startAt: toIso(r.start_at),
@@ -1221,6 +1247,7 @@ export const store = {
           miles: toNum(r.miles),
           durationMinutes: toNum(r.duration_minutes),
           price: toNum(r.price),
+          driverValue: r.driver_value != null ? toNum(r.driver_value) : undefined,
           received: !!r.received,
           status: (r.status || "pending") as TripStatus,
           startedAt: r.started_at ? toIso(r.started_at) : undefined,

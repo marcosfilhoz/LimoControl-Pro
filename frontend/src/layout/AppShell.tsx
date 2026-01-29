@@ -16,6 +16,8 @@ type NavItem = {
 const nav: NavItem[] = [
   { to: "/", label: "Home", moduleId: "home" },
   { to: "/dashboard", label: "Dashboard", moduleId: "dashboard", excludeDriver: true },
+  { to: "/driver-payouts-dashboard", label: "Driver Payouts", moduleId: "driver-payouts-dashboard", excludeDriver: true },
+  { to: "/driver-closing-report", label: "Driver Closing Report", moduleId: "driver-closing-report", excludeDriver: true },
   { to: "/rides-funnel", label: "Driver Trips", moduleId: "driver-trips" },
   { to: "/trips", label: "Trips", moduleId: "trips", excludeDriver: true },
   { to: "/drivers", label: "Drivers", moduleId: "drivers", excludeDriver: true },

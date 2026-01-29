@@ -181,6 +181,7 @@ export const api = {
     vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
     cnf?: string;
     flightNumber?: string;
+    flightDetails?: string;
     meetGreet?: string;
     clientPhone?: string;
     startAt: string;
@@ -191,6 +192,7 @@ export const api = {
     miles: number;
     durationMinutes: number;
     price: number;
+    driverValue?: number | null;
     received?: boolean;
     notes?: string;
   }) => request("/trips", { method: "POST", body: JSON.stringify(data) }),
@@ -206,6 +208,7 @@ export const api = {
     vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
     cnf?: string;
     flightNumber?: string;
+    flightDetails?: string;
     meetGreet?: string;
     clientPhone?: string;
     startAt: string;
@@ -216,6 +219,7 @@ export const api = {
     miles: number;
     durationMinutes: number;
     price: number;
+    driverValue?: number | null;
     received?: boolean;
     notes?: string;
   }) => request(`/trips/${id}`, { method: "PUT", body: JSON.stringify(data) }),

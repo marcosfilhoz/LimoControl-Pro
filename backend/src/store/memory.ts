@@ -58,7 +58,7 @@ export const trips: Trip[] = [
   },
 ];
 
-const defaultModules = ["dashboard", "trips", "drivers", "clients", "companies", "users", "driver-trips", "home"];
+const defaultModules = ["dashboard", "trips", "drivers", "clients", "companies", "users", "driver-trips", "driver-payouts-dashboard", "driver-closing-report", "home"];
 
 export const settings: AppSettings = {
   id: "main",

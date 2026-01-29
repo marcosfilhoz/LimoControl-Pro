@@ -93,7 +93,7 @@ export async function initDbIfNeeded() {
 
   await exec(`
     insert into app_settings (id, enabled_modules)
-    values ('main', array['dashboard','trips','drivers','clients','companies','users','driver-trips','home'])
+    values ('main', array['dashboard','trips','drivers','clients','companies','users','driver-trips','driver-payouts-dashboard','driver-closing-report','home'])
     on conflict (id) do nothing;
   `);
 
@@ -376,6 +376,30 @@ export async function initDbIfNeeded() {
   await exec(`create index if not exists idx_trips_cnf on trips(cnf);`);
   await exec(`create index if not exists idx_trips_flight_number on trips(flight_number);`);
   await exec(`create index if not exists idx_trips_meet_greet on trips(meet_greet);`);
+
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='driver_value') then
+        null;
+      else
+        alter table trips add column driver_value double precision;
+        raise notice 'Added driver_value column to trips table';
+      end if;
+    end $$;
+  `);
+
+  await exec(`
+    do $$
+    begin
+      if exists (select 1 from information_schema.columns where table_name='trips' and column_name='flight_details') then
+        null;
+      else
+        alter table trips add column flight_details text;
+        raise notice 'Added flight_details column to trips table';
+      end if;
+    end $$;
+  `);
 
   // Migration: Remove company_id from vehicles and change year to color
   await exec(`

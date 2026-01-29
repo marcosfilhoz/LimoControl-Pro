@@ -42,7 +42,6 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(false);
 
   const [page, setPage] = useState<"summary" | "hourly-analysis" | "report-trips" | "report-cnf" | "top-drivers" | "top-companies" | "top-clients" | "vehicle-analysis">("summary");
-  const [expandedCnfDays, setExpandedCnfDays] = useState<Set<string>>(new Set());
 
   // filters
   const [filterWeek, setFilterWeek] = useState("");
@@ -187,40 +186,19 @@ export function DashboardPage() {
   }, [filteredTrips, driverById, clientById, companyById]);
 
   const cnfReportRows = useMemo(() => {
-    const tripsWithCnf = filteredTrips
+    return filteredTrips
       .filter((t) => typeof t.cnf === "string" && t.cnf.trim())
       .map((t) => ({
         id: t.id,
         date: formatDate(t.startAt),
         time: formatTime(t.startAt),
         cnf: t.cnf ? String(t.cnf) : "",
-        driver: driverById.get(t.driverId) || t.driverId,
         client: t.clientId ? clientById.get(t.clientId) || t.clientId : "—",
-        company: companyById.get(t.companyId) || t.companyId,
-        received: t.received ? "Paid" : "Unpaid",
         value: t.price,
         startAt: t.startAt,
-      }));
-
-    const groupedByDate = new Map<string, typeof tripsWithCnf>();
-    for (const trip of tripsWithCnf) {
-      const existing = groupedByDate.get(trip.date);
-      if (existing) {
-        existing.push(trip);
-      } else {
-        groupedByDate.set(trip.date, [trip]);
-      }
-    }
-
-    return Array.from(groupedByDate.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, trips]) => ({
-        date,
-        count: trips.length,
-        totalRevenue: trips.reduce((sum, t) => sum + t.value, 0),
-        trips: trips.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
-      }));
-  }, [filteredTrips, driverById, clientById, companyById]);
+      }))
+      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+  }, [filteredTrips, clientById]);
 
   function exportPdf() {
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
@@ -311,13 +289,8 @@ export function DashboardPage() {
 
   function exportCnfPdf() {
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-    const title = "Report 2 - CNF by Day";
+    const title = "CNF Report";
 
-    const clientLabel = filterClientQuery.trim() ? filterClientQuery.trim() : "All";
-    const companyLabel = filterCompanyId ? companyById.get(filterCompanyId) || filterCompanyId : "All";
-    const driverLabel = filterDriverId ? driverById.get(filterDriverId) || filterDriverId : "All";
-    const receivedLabel =
-      filterReceived === "received" ? "Paid" : filterReceived === "not_received" ? "Unpaid" : "All";
     const periodLabel = filterWeek
       ? weekLabel(filterWeek, filterFrom, filterTo)
       : filterMonth
@@ -329,45 +302,30 @@ export function DashboardPage() {
     doc.setFontSize(14);
     doc.text(title, 40, 40);
     doc.setFontSize(9.5);
-    doc.text(
-      `Period: ${periodLabel} | Client: ${clientLabel} | Driver: ${driverLabel} | Company: ${companyLabel} | Payment: ${receivedLabel}`,
-      40,
-      60,
-    );
+    doc.text(`Period: ${periodLabel}`, 40, 60);
 
-    const head = [["Date", "Time", "CNF", "Driver", "Client", "Company", "Paid", "Amount ($)"]];
-    const body: string[][] = [];
-    for (const dayGroup of cnfReportRows) {
-      for (const trip of dayGroup.trips) {
-        body.push([
-          trip.date,
-          trip.time,
-          trip.cnf,
-          trip.driver,
-          trip.client,
-          trip.company,
-          trip.received,
-          trip.value.toFixed(2),
-        ]);
-      }
-    }
+    const head = [["Date", "Time", "CNF", "Client", "Amount ($)"]];
+    const body = cnfReportRows.map((r) => [
+      r.date,
+      r.time,
+      r.cnf,
+      r.client,
+      r.value.toFixed(2),
+    ]);
 
     autoTable(doc, {
       head,
       body,
       startY: 80,
       margin: { left: 40, right: 40 },
-      styles: { fontSize: 8.5, cellPadding: 4, overflow: "linebreak" },
+      styles: { fontSize: 9, cellPadding: 4, overflow: "linebreak" },
       headStyles: { fillColor: [15, 23, 42] },
       columnStyles: {
-        0: { cellWidth: 55 },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 80 },
-        3: { cellWidth: 85 },
-        4: { cellWidth: 85 },
-        5: { cellWidth: 95 },
-        6: { cellWidth: 55 },
-        7: { halign: "right", cellWidth: 55 },
+        0: { cellWidth: 70 },
+        1: { cellWidth: 50 },
+        2: { cellWidth: 90 },
+        3: { cellWidth: "auto" },
+        4: { halign: "right", cellWidth: 65 },
       },
       didDrawPage: (data) => {
         const pageCount = doc.getNumberOfPages();
@@ -376,7 +334,7 @@ export function DashboardPage() {
       },
     });
 
-    const totalValue = cnfReportRows.reduce((acc, r) => acc + r.totalRevenue, 0);
+    const totalValue = cnfReportRows.reduce((acc, r) => acc + r.value, 0);
     const finalY = (doc as any).lastAutoTable?.finalY || 80;
     doc.setFontSize(10);
     doc.text(`Total: $ ${totalValue.toFixed(2)}`, 40, finalY + 24);
@@ -965,9 +923,9 @@ export function DashboardPage() {
         <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Report 2 - CNF by Day</div>
+              <div className="text-sm font-semibold text-slate-900">CNF Report</div>
               <div className="text-sm text-slate-600">
-                Days: <span className="font-medium text-slate-900">{cnfReportRows.length}</span>
+                Rows: <span className="font-medium text-slate-900">{cnfReportRows.length}</span>
               </div>
             </div>
             <Button onClick={exportCnfPdf} disabled={cnfReportRows.length === 0}>
@@ -975,114 +933,40 @@ export function DashboardPage() {
             </Button>
           </div>
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
-              <div className="col-span-1"></div>
-              <div className="col-span-3">Date</div>
-              <div className="col-span-2 text-right">Trips</div>
-              <div className="col-span-2 text-right">Total Revenue</div>
+            <div className="hidden grid-cols-5 gap-2 border-b border-slate-200 bg-slate-50 p-3 text-sm font-medium md:grid">
+              <div>Date</div>
+              <div>Time</div>
+              <div>CNF</div>
+              <div>Client</div>
+              <div className="text-right">Value</div>
             </div>
             <div className="divide-y divide-slate-100">
-              {cnfReportRows.map((dayGroup) => {
-                const isExpanded = expandedCnfDays.has(dayGroup.date);
-                return (
-                  <div key={dayGroup.date}>
-                    <div
-                      className="p-3 cursor-pointer hover:bg-slate-50 transition-colors"
-                      onClick={() => {
-                        const newSet = new Set(expandedCnfDays);
-                        if (isExpanded) {
-                          newSet.delete(dayGroup.date);
-                        } else {
-                          newSet.add(dayGroup.date);
-                        }
-                        setExpandedCnfDays(newSet);
-                      }}
-                    >
-                      <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
-                        <div className="md:col-span-1">
-                          <svg
-                            className={`w-5 h-5 transform transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                        <div className="md:col-span-3">
-                          <div className="text-slate-600 md:hidden">Date</div>
-                          <div className="font-medium">{dayGroup.date}</div>
-                        </div>
-                        <div className="md:col-span-2 md:text-right">
-                          <div className="text-slate-600 md:hidden">Trips</div>
-                          <div className="font-medium">{dayGroup.count}</div>
-                        </div>
-                        <div className="md:col-span-2 md:text-right">
-                          <div className="text-slate-600 md:hidden">Total Revenue</div>
-                          <div className="font-medium">$ {dayGroup.totalRevenue.toFixed(2)}</div>
-                        </div>
-                      </div>
+              {cnfReportRows.map((r) => (
+                <div key={r.id} className="p-3">
+                  <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-5 md:items-center">
+                    <div>
+                      <div className="text-slate-600 md:hidden">Date</div>
+                      <div className="font-medium">{r.date}</div>
                     </div>
-                    {isExpanded && (
-                      <div className="bg-slate-50 border-t border-slate-200">
-                        <div className="hidden grid-cols-12 gap-2 border-b border-slate-200 bg-slate-100 p-3 text-xs font-medium md:grid">
-                          <div className="col-span-2">Time</div>
-                          <div className="col-span-2">CNF</div>
-                          <div className="col-span-2">Driver</div>
-                          <div className="col-span-2">Client</div>
-                          <div className="col-span-2">Company</div>
-                          <div className="col-span-1">Paid</div>
-                          <div className="col-span-1 text-right">Amount</div>
-                        </div>
-                        <div className="divide-y divide-slate-200">
-                          {dayGroup.trips.map((trip) => (
-                            <div key={trip.id} className="p-3 pl-8">
-                              <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-12 md:items-center">
-                                <div className="md:col-span-2">
-                                  <div className="text-slate-600 md:hidden">Time</div>
-                                  <div className="text-xs text-slate-600">{trip.time}</div>
-                                </div>
-                                <div className="md:col-span-2">
-                                  <div className="text-slate-600 md:hidden">CNF</div>
-                                  <div className="truncate">{trip.cnf}</div>
-                                </div>
-                                <div className="md:col-span-2">
-                                  <div className="text-slate-600 md:hidden">Driver</div>
-                                  <div className="truncate">{trip.driver}</div>
-                                </div>
-                                <div className="md:col-span-2">
-                                  <div className="text-slate-600 md:hidden">Client</div>
-                                  <div className="truncate">{trip.client}</div>
-                                </div>
-                                <div className="md:col-span-2">
-                                  <div className="text-slate-600 md:hidden">Company</div>
-                                  <div className="truncate">{trip.company}</div>
-                                </div>
-                                <div className="md:col-span-1">
-                                  <div className="text-slate-600 md:hidden">Paid</div>
-                                  <span
-                                    className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
-                                      trip.received === "Paid"
-                                        ? "bg-emerald-50 text-emerald-700"
-                                        : "bg-amber-50 text-amber-700"
-                                    }`}
-                                  >
-                                    {trip.received}
-                                  </span>
-                                </div>
-                                <div className="md:col-span-1 md:text-right">
-                                  <div className="text-slate-600 md:hidden">Amount</div>
-                                  <div className="font-medium">$ {trip.value.toFixed(2)}</div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      <div className="text-slate-600 md:hidden">Time</div>
+                      <div className="text-slate-700">{r.time}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-600 md:hidden">CNF</div>
+                      <div className="truncate">{r.cnf}</div>
+                    </div>
+                    <div>
+                      <div className="text-slate-600 md:hidden">Client</div>
+                      <div className="truncate">{r.client}</div>
+                    </div>
+                    <div className="md:text-right">
+                      <div className="text-slate-600 md:hidden">Value</div>
+                      <div className="font-medium">$ {r.value.toFixed(2)}</div>
+                    </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
               {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
               {!loading && cnfReportRows.length === 0 ? (
                 <div className="p-3 text-sm text-slate-600">No CNF rows for this filter.</div>

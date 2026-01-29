@@ -75,6 +75,7 @@ export interface Trip {
   vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
   cnf?: string;
   flightNumber?: string;
+  flightDetails?: string;
   // Free-text (e.g., greeter name / instructions). Empty/undefined means no meet & greet.
   meetGreet?: string | null;
   // Optional contact phone for this trip (not necessarily the client master record).
@@ -87,6 +88,8 @@ export interface Trip {
   miles: number;
   durationMinutes: number;
   price: number;
+  /** Amount paid to driver (payout). Separate from client price. */
+  driverValue?: number | null;
   received: boolean;
   status: TripStatus;
   // Timestamps for tracking actual trip execution

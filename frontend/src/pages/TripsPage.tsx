@@ -20,6 +20,7 @@ type Trip = {
   vehicleType?: "SUV" | "Sedan" | "Economy" | "First Class" | null;
   cnf?: string;
   flightNumber?: string;
+  flightDetails?: string;
   // Free-text (e.g., greeter name / instructions). Empty/undefined means no meet & greet.
   meetGreet?: string | null;
   clientPhone?: string;
@@ -31,6 +32,8 @@ type Trip = {
   miles: number;
   durationMinutes: number;
   price: number;
+  /** Amount paid to driver (payout). Separate from client price. */
+  driverValue?: number | null;
   received: boolean;
   notes?: string;
 };
@@ -83,11 +86,13 @@ export function TripsPage() {
   const [endAt, setEndAt] = useState(() => toLocalInputValue(new Date()));
   const [cnf, setCnf] = useState("");
   const [flightNumber, setFlightNumber] = useState("");
+  const [flightDetails, setFlightDetails] = useState("");
   const [meetGreet, setMeetGreet] = useState("");
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [stop, setStop] = useState("");
   const [price, setPrice] = useState("");
+  const [driverValue, setDriverValue] = useState("");
   const [notes, setNotes] = useState("");
   const [vehicleType, setVehicleType] = useState<"SUV" | "Sedan" | "Economy" | "First Class" | "">("");
   const [tripType, setTripType] = useState<"transfer" | "hourly">("transfer");
@@ -96,8 +101,6 @@ export function TripsPage() {
   const [received, setReceived] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsTrip, setDetailsTrip] = useState<Trip | null>(null);
-  const [driverPdfAmountModalOpen, setDriverPdfAmountModalOpen] = useState(false);
-  const [driverPdfAmount, setDriverPdfAmount] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -280,11 +283,13 @@ export function TripsPage() {
     setEndAt(dt);
     setCnf("");
     setFlightNumber("");
+    setFlightDetails("");
     setMeetGreet("");
     setOrigin("");
     setDestination("");
     setStop("");
     setPrice("");
+    setDriverValue("");
     setNotes("");
     setVehicleType("");
     setReceived(false);
@@ -314,11 +319,13 @@ export function TripsPage() {
     setEndAt(startAtValue); // Keep endAt equal to startAt for backend compatibility
     setCnf(trip.cnf || "");
     setFlightNumber(trip.flightNumber || "");
+    setFlightDetails(trip.flightDetails || "");
     setMeetGreet(trip.meetGreet || "");
     setOrigin(trip.origin);
     setDestination(trip.destination);
     setStop(trip.stop || "");
     setPrice(String(trip.price));
+    setDriverValue(trip.driverValue != null ? String(trip.driverValue) : "");
     setNotes(trip.notes || "");
     setVehicleType(trip.vehicleType || "");
     setReceived(trip.received);
@@ -344,6 +351,7 @@ export function TripsPage() {
         vehicleType: vehicleType ? (vehicleType as any) : null,
         cnf: cnf.trim() ? cnf.trim() : undefined,
         flightNumber: flightNumber.trim() ? flightNumber.trim() : undefined,
+        flightDetails: flightDetails.trim() ? flightDetails.trim() : undefined,
         meetGreet: meetGreetOut ? meetGreetOut : undefined,
         startAt: fromLocalInputValue(startAt),
         endAt: fromLocalInputValue(endAtOut),
@@ -353,6 +361,7 @@ export function TripsPage() {
         miles: editingTrip?.miles || 0,
         durationMinutes: editingTrip?.durationMinutes || 0,
         price: Number(price) || 0,
+        driverValue: driverValue.trim() ? Number(driverValue) : undefined,
         received,
         notes: notes || undefined,
       };
@@ -802,8 +811,15 @@ export function TripsPage() {
             onChange={(e) => setMeetGreet(e.target.value)}
           />
 
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Input label="Amount ($)" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <Input
+              label="Driver value ($)"
+              inputMode="decimal"
+              value={driverValue}
+              onChange={(e) => setDriverValue(e.target.value)}
+              placeholder="Amount paid to driver"
+            />
           </div>
 
           <label className="block">
@@ -885,6 +901,12 @@ export function TripsPage() {
               <Detail label="Dropoff Address" value={detailsTrip.destination} />
               <Detail label="Stop" value={detailsTrip.stop ? String(detailsTrip.stop) : "—"} />
               <Detail label="Amount" value={`$ ${detailsTrip.price.toFixed(2)}`} />
+              <Detail
+                label="Driver value"
+                value={
+                  detailsTrip.driverValue != null ? `$ ${Number(detailsTrip.driverValue).toFixed(2)}` : "—"
+                }
+              />
               <Detail label="Date/Time" value={`${formatDate(detailsTrip.startAt)} ${formatTime(detailsTrip.startAt)}`} />
             </div>
             {detailsTrip.notes ? (
@@ -897,10 +919,20 @@ export function TripsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-                onClick={() => {
-                  setDriverPdfAmount(String(detailsTrip.price.toFixed(2)));
-                  setDriverPdfAmountModalOpen(true);
-                }}
+                onClick={() =>
+                  exportTripPdf(detailsTrip, {
+                    driverById,
+                    clientById,
+                    companyById,
+                    vehicleById,
+                    logoDataUrl: settings?.logoDataUrl || null,
+                    footer: {
+                      company: settings?.pdfCompany || "",
+                      email: settings?.pdfEmail || "",
+                      phone: settings?.pdfPhone || "",
+                    },
+                  }, "driver")
+                }
               >
                 Driver PDF
               </button>
@@ -953,46 +985,6 @@ export function TripsPage() {
           </div>
         ) : null}
       </Modal>
-
-      <Modal title="Driver PDF Amount" open={driverPdfAmountModalOpen} onClose={() => setDriverPdfAmountModalOpen(false)}>
-        <div className="space-y-4">
-          <Input
-            label="Amount ($)"
-            inputMode="decimal"
-            value={driverPdfAmount}
-            onChange={(e) => setDriverPdfAmount(e.target.value)}
-            placeholder="0.00"
-          />
-          <div className="flex gap-2">
-            <Button
-              onClick={() => {
-                if (detailsTrip) {
-                  const customAmount = driverPdfAmount.trim() ? Number(driverPdfAmount) : detailsTrip.price;
-                  exportTripPdf(detailsTrip, {
-                    driverById,
-                    clientById,
-                    companyById,
-                    vehicleById,
-                    logoDataUrl: settings?.logoDataUrl || null,
-                    footer: {
-                      company: settings?.pdfCompany || "",
-                      email: settings?.pdfEmail || "",
-                      phone: settings?.pdfPhone || "",
-                    },
-                    customDriverAmount: customAmount,
-                  }, "driver");
-                }
-                setDriverPdfAmountModalOpen(false);
-              }}
-            >
-              Generate PDF
-            </Button>
-            <Button variant="ghost" onClick={() => setDriverPdfAmountModalOpen(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
@@ -1031,7 +1023,6 @@ function exportTripPdf(
     vehicleById: Map<string, Vehicle>;
     logoDataUrl?: string | null;
     footer?: { company?: string; email?: string; phone?: string };
-    customDriverAmount?: number;
   },
   type: "driver" | "client" = "driver",
 ) {
@@ -1111,7 +1102,10 @@ function exportTripPdf(
       ["Date", formatDate(trip.startAt)],
       ["Time", formatTime(trip.startAt)],
       ["Service Type", service],
-    ];
+      ["Job Type", vehicleType],
+      
+["Vehicle", vehicle],
+      ["Driver", driver],    ];
 
     if (hourlyTime !== "—") {
       clientTableData.push(["Duration", hourlyTime]);
@@ -1130,6 +1124,10 @@ function exportTripPdf(
 
     if (trip.flightNumber) {
       clientTableData.push(["Flight Number", trip.flightNumber]);
+    }
+
+    if (trip.flightDetails) {
+      clientTableData.push(["Flight Details", trip.flightDetails]);
     }
 
     if (meetGreet !== "—") {
@@ -1198,41 +1196,40 @@ function exportTripPdf(
     return;
   }
 
-  // Driver PDF - Original detailed version
-  // Title
+  // Driver PDF - Use driver value from trip (amount paid to driver)
+  const driverAmount = trip.driverValue != null ? Number(trip.driverValue) : trip.price;
+
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text("Booking Details", left, top);
 
-  // CNF Number (replacing ID)
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(`CNF: ${cnf}`, left, top + 20);
 
-  // Use custom amount for driver PDF if provided, otherwise use trip price
-  const driverAmount = refs.customDriverAmount !== undefined ? refs.customDriverAmount : trip.price;
-  
-  // Prepare table data
-  const tableData = [
-    ["Company", company],
-    ["Service Type", service],
-    ["Job Type", vehicleType],
-    ["Date/Time", `${formatDate(trip.startAt)} ${formatTime(trip.startAt)}`],
-    ["Payment Status", status],
-    ["Hourly Time", hourlyTime],
-    ["Driver", driver],
-    ["Vehicle", vehicle],
-    ["Client", client],
-    ["Phone Number", phone],
-    ["Meet & Greet", meetGreet],
-    ["Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—"],
-    ["Pickup Address", trip.origin],
-    ["Stop", trip.stop ? String(trip.stop) : "—"],
-    ["Dropoff Address", trip.destination],
-    ["Amount", `$ ${driverAmount.toFixed(2)}`],
-  ];
+  // Build table rows only when field has information (no blank lines)
+  const tableData: string[][] = [];
+  const addRow = (label: string, value: string) => {
+    if (value.trim() && value !== "—") tableData.push([label, value]);
+  };
+  addRow("Company", company);
+  addRow("Service Type", service);
+  addRow("Job Type", vehicleType);
+  tableData.push(["Date/Time", `${formatDate(trip.startAt)} ${formatTime(trip.startAt)}`]);
+  addRow("Payment Status", status);
+  addRow("Hourly Time", hourlyTime);
+  addRow("Driver", driver);
+  addRow("Vehicle", vehicle);
+  addRow("Client", client);
+  addRow("Phone Number", phone);
+  addRow("Meet & Greet", meetGreet);
+  addRow("Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—");
+  addRow("Flight Details", trip.flightDetails ? String(trip.flightDetails) : "—");
+  addRow("Pickup Address", trip.origin);
+  addRow("Stop", trip.stop ? String(trip.stop) : "—");
+  addRow("Dropoff Address", trip.destination);
+  tableData.push(["Amount", `$ ${driverAmount.toFixed(2)}`]);
 
-  // Create table
   autoTable(doc, {
     startY: top + 35,
     head: [["Field", "Value"]],
