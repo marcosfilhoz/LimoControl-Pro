@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AutocompleteSelect } from "../components/AutocompleteSelect";
 import { BarList } from "../components/BarList";
 import { Button } from "../components/Button";
@@ -54,6 +54,34 @@ export function DashboardPage() {
     | "top-clients"
     | "vehicle-analysis";
   const [page, setPage] = useState<DashboardTab>("summary");
+  const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
+  const viewDropdownRef = useRef<HTMLDivElement>(null);
+
+  const dashboardViewOptions: { id: DashboardTab; label: string }[] = [
+    { id: "summary", label: "Summary" },
+    { id: "hourly-analysis", label: "Hourly Analysis" },
+    { id: "report-trips", label: "Trips Report" },
+    { id: "report-cnf", label: "CNF Report" },
+    { id: "driver-closing-report", label: "Driver Closing Report" },
+    { id: "driver-payouts", label: "Driver Payouts" },
+    { id: "top-drivers", label: "TOP Drivers" },
+    { id: "top-companies", label: "TOP Companies" },
+    { id: "top-clients", label: "TOP Clients" },
+    { id: "vehicle-analysis", label: "Vehicle Analysis" },
+  ];
+  const currentViewLabel = dashboardViewOptions.find((o) => o.id === page)?.label ?? "Summary";
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (viewDropdownRef.current && !viewDropdownRef.current.contains(event.target as Node)) {
+        setViewDropdownOpen(false);
+      }
+    }
+    if (viewDropdownOpen) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [viewDropdownOpen]);
 
   // filters
   const [filterWeek, setFilterWeek] = useState("");
@@ -695,70 +723,62 @@ export function DashboardPage() {
             Filters by period, client, and company. Showing {filteredTrips.length}/{trips.length} trips.
           </div>
         </div>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500">Overview</span>
-            <Button variant={page === "summary" ? "primary" : "ghost"} onClick={() => setPage("summary")}>
-              Summary
-            </Button>
-            <Button variant={page === "hourly-analysis" ? "primary" : "ghost"} onClick={() => setPage("hourly-analysis")}>
-              Hourly Analysis
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500">Reports</span>
-            <Button variant={page === "report-trips" ? "primary" : "ghost"} onClick={() => setPage("report-trips")}>
-              Trips Report
-            </Button>
-            <Button variant={page === "report-cnf" ? "primary" : "ghost"} onClick={() => setPage("report-cnf")}>
-              CNF Report
-            </Button>
-            <Button variant={page === "driver-closing-report" ? "primary" : "ghost"} onClick={() => setPage("driver-closing-report")}>
-              Driver Closing Report
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500">Driver</span>
-            <Button variant={page === "driver-payouts" ? "primary" : "ghost"} onClick={() => setPage("driver-payouts")}>
-              Driver Payouts
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-500">Analysis</span>
-            <Button variant={page === "top-drivers" ? "primary" : "ghost"} onClick={() => setPage("top-drivers")}>
-              TOP Drivers
-            </Button>
-            <Button variant={page === "top-companies" ? "primary" : "ghost"} onClick={() => setPage("top-companies")}>
-              TOP Companies
-            </Button>
-            <Button variant={page === "top-clients" ? "primary" : "ghost"} onClick={() => setPage("top-clients")}>
-              TOP Clients
-            </Button>
-            <Button variant={page === "vehicle-analysis" ? "primary" : "ghost"} onClick={() => setPage("vehicle-analysis")}>
-              Vehicle Analysis
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-2">
+        <div className="flex flex-wrap items-center gap-2" ref={viewDropdownRef}>
+          <div className="relative">
             <Button
-              variant="ghost"
-              onClick={() => {
-                setFilterWeek("");
-                setFilterMonth("");
-                setFilterFrom("");
-                setFilterTo("");
-                setFilterClientQuery("");
-                setFilterDriverId("");
-                setFilterReceived("");
-                setFilterCompanyId("");
-                setFilterCnfQuery("");
-                setFilterFlightNumberQuery("");
-                setFilterMeetGreet("");
-                setFilterVehicleType("");
-              }}
+              variant="primary"
+              onClick={() => setViewDropdownOpen((o) => !o)}
+              className="inline-flex items-center gap-2"
             >
-              Clear filters
+              <span>{currentViewLabel}</span>
+              <svg
+                className={`h-4 w-4 shrink-0 transition-transform ${viewDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </Button>
+            {viewDropdownOpen ? (
+              <div className="absolute right-0 top-full z-10 mt-1 min-w-[220px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                {dashboardViewOptions.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setPage(opt.id);
+                      setViewDropdownOpen(false);
+                    }}
+                    className={`block w-full px-4 py-2 text-left text-sm ${
+                      page === opt.id ? "bg-slate-100 font-medium text-slate-900" : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setFilterWeek("");
+              setFilterMonth("");
+              setFilterFrom("");
+              setFilterTo("");
+              setFilterClientQuery("");
+              setFilterDriverId("");
+              setFilterReceived("");
+              setFilterCompanyId("");
+              setFilterCnfQuery("");
+              setFilterFlightNumberQuery("");
+              setFilterMeetGreet("");
+              setFilterVehicleType("");
+            }}
+          >
+            Clear filters
+          </Button>
         </div>
       </div>
 
