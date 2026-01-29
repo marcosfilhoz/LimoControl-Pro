@@ -740,24 +740,25 @@ export function DashboardPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-2">
             <Button
-            variant="ghost"
-            onClick={() => {
-              setFilterWeek("");
-              setFilterMonth("");
-              setFilterFrom("");
-              setFilterTo("");
-              setFilterClientQuery("");
-              setFilterDriverId("");
-              setFilterReceived("");
-              setFilterCompanyId("");
-              setFilterCnfQuery("");
-              setFilterFlightNumberQuery("");
-              setFilterMeetGreet("");
-              setFilterVehicleType("");
-            }}
-          >
-            Clear filters
-          </Button>
+              variant="ghost"
+              onClick={() => {
+                setFilterWeek("");
+                setFilterMonth("");
+                setFilterFrom("");
+                setFilterTo("");
+                setFilterClientQuery("");
+                setFilterDriverId("");
+                setFilterReceived("");
+                setFilterCompanyId("");
+                setFilterCnfQuery("");
+                setFilterFlightNumberQuery("");
+                setFilterMeetGreet("");
+                setFilterVehicleType("");
+              }}
+            >
+              Clear filters
+            </Button>
+          </div>
         </div>
       </div>
 
