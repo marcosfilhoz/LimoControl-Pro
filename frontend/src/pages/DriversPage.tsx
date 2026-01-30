@@ -25,7 +25,21 @@ export function DriversPage() {
     driver: null,
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"active" | "inactive" | "all">("active");
+
   const activeCount = useMemo(() => items.filter((i) => i.active).length, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return items.filter((d) => {
+      if (activeFilter === "active" && !d.active) return false;
+      if (activeFilter === "inactive" && d.active) return false;
+      if (!q) return true;
+      const haystack = [d.name, d.phone ?? "", d.license ?? ""].join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [items, searchQuery, activeFilter]);
 
   useEffect(() => {
     let alive = true;
@@ -114,6 +128,25 @@ export function DriversPage() {
         <Button onClick={openCreate}>Add driver</Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          placeholder="Search..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-10 min-w-0 max-w-xs flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
+        />
+        <select
+          className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:text-sm"
+          value={activeFilter}
+          onChange={(e) => setActiveFilter(e.target.value as "active" | "inactive" | "all")}
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="all">All</option>
+        </select>
+      </div>
+
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -125,7 +158,7 @@ export function DriversPage() {
           <div className="col-span-2 text-right">Actions</div>
         </div>
         <div className="divide-y divide-slate-100">
-          {items.map((d) => (
+          {filteredItems.map((d) => (
             <div
               key={d.id}
               className="p-3"
@@ -172,7 +205,9 @@ export function DriversPage() {
             </div>
           ))}
           {loading ? <div className="p-3 text-sm text-slate-600">Loading...</div> : null}
-          {!loading && items.length === 0 ? <div className="p-3 text-sm text-slate-600">No drivers yet.</div> : null}
+          {!loading && filteredItems.length === 0 ? (
+            <div className="p-3 text-sm text-slate-600">{items.length === 0 ? "No drivers yet." : "No results match the filters."}</div>
+          ) : null}
         </div>
       </div>
 
