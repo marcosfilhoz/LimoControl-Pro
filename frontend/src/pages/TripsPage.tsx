@@ -1229,11 +1229,11 @@ function exportTripPdf(
   addRow("Client", client);
   addRow("Phone Number", phone);
   addRow("Meet & Greet", meetGreet);
-  addRow("Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—");
-  addRow("Flight Details", trip.flightDetails ? String(trip.flightDetails) : "—");
   addRow("Pickup Address", trip.origin);
   addRow("Stop", trip.stop ? String(trip.stop) : "—");
   addRow("Dropoff Address", trip.destination);
+  addRow("Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—");
+  addRow("Flight Details", trip.flightDetails ? String(trip.flightDetails) : "—");
   tableData.push(["Amount", `$ ${driverAmount.toFixed(2)}`]);
 
   autoTable(doc, {
