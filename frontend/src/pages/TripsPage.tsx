@@ -349,6 +349,9 @@ export function TripsPage() {
         companyId,
         vehicleId: vehiclesEnabled ? (vehicleId ? vehicleId : null) : undefined,
         vehicleType: vehicleType ? (vehicleType as any) : null,
+        tripType,
+        hourlyStartTime: tripType === "hourly" && hourlyStartTime ? hourlyStartTime : undefined,
+        hourlyEndTime: tripType === "hourly" && hourlyEndTime ? hourlyEndTime : undefined,
         cnf: cnf.trim() ? cnf.trim() : undefined,
         flightNumber: flightNumber.trim() ? flightNumber.trim() : undefined,
         flightDetails: flightDetails.trim() ? flightDetails.trim() : undefined,
@@ -742,21 +745,23 @@ export function TripsPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="text-sm font-medium text-slate-700">Trip type</div>
             <div className="mt-2 flex flex-wrap gap-4 text-sm text-slate-800">
-              <label className="inline-flex items-center gap-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
                 <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+                  type="radio"
+                  name="tripType"
+                  className="h-4 w-4 border-slate-300 text-slate-900 focus:ring-slate-300"
                   checked={tripType === "transfer"}
-                  onChange={(e) => setTripType(e.target.checked ? "transfer" : "hourly")}
+                  onChange={() => setTripType("transfer")}
                 />
                 Transfer
               </label>
-              <label className="inline-flex items-center gap-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
                 <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+                  type="radio"
+                  name="tripType"
+                  className="h-4 w-4 border-slate-300 text-slate-900 focus:ring-slate-300"
                   checked={tripType === "hourly"}
-                  onChange={(e) => setTripType(e.target.checked ? "hourly" : "transfer")}
+                  onChange={() => setTripType("hourly")}
                 />
                 Hourly
               </label>
@@ -1222,18 +1227,18 @@ function exportTripPdf(
   addRow("Service Type", service);
   addRow("Job Type", vehicleType);
   tableData.push(["Date/Time", `${formatDate(trip.startAt)} ${formatTime(trip.startAt)}`]);
-  addRow("Payment Status", status);
   addRow("Hourly Time", hourlyTime);
   addRow("Driver", driver);
   addRow("Vehicle", vehicle);
   addRow("Client", client);
   addRow("Phone Number", phone);
-  addRow("Meet & Greet", meetGreet);
   addRow("Pickup Address", trip.origin);
   addRow("Stop", trip.stop ? String(trip.stop) : "—");
   addRow("Dropoff Address", trip.destination);
+  addRow("Meet & Greet", meetGreet);
   addRow("Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—");
   addRow("Flight Details", trip.flightDetails ? String(trip.flightDetails) : "—");
+  addRow("Payment Status", status);
   tableData.push(["Amount", `$ ${driverAmount.toFixed(2)}`]);
 
   autoTable(doc, {
