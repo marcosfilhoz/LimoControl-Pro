@@ -342,7 +342,7 @@ export function DashboardPage() {
       // avoid special arrow character that may render incorrectly in built-in fonts
       r.route.replace("→", "->"),
       r.received,
-      r.value.toFixed(2),
+      formatCurrencyAmount(r.value),
     ]);
 
     const totalValue = reportRows.reduce((acc, r) => acc + r.value, 0);
@@ -376,7 +376,11 @@ export function DashboardPage() {
 
     const finalY = (doc as any).lastAutoTable?.finalY || 80;
     doc.setFontSize(10);
-    doc.text(`Total: $ ${totalValue.toFixed(2)} | Paid: $ ${totalReceived.toFixed(2)} | Unpaid: $ ${totalNotReceived.toFixed(2)}`, 40, finalY + 24);
+    doc.text(
+      `Total: $ ${formatCurrencyAmount(totalValue)} | Paid: $ ${formatCurrencyAmount(totalReceived)} | Unpaid: $ ${formatCurrencyAmount(totalNotReceived)}`,
+      40,
+      finalY + 24,
+    );
 
     const fileName = `trips_report_${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);
@@ -405,7 +409,7 @@ export function DashboardPage() {
       r.time,
       r.cnf,
       r.client,
-      r.value.toFixed(2),
+      formatCurrencyAmount(r.value),
     ]);
 
     autoTable(doc, {
@@ -432,7 +436,7 @@ export function DashboardPage() {
     const totalValue = cnfReportRows.reduce((acc, r) => acc + r.value, 0);
     const finalY = (doc as any).lastAutoTable?.finalY || 80;
     doc.setFontSize(10);
-    doc.text(`Total: $ ${totalValue.toFixed(2)}`, 40, finalY + 24);
+    doc.text(`Total: $ ${formatCurrencyAmount(totalValue)}`, 40, finalY + 24);
 
     const fileName = `cnf_report_${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);
@@ -470,7 +474,7 @@ export function DashboardPage() {
       r.company,
       r.route.replace("→", "->"),
       r.received,
-      r.value.toFixed(2),
+      formatCurrencyAmount(r.value),
     ]);
     const totalValue = driverClosingReportRows.reduce((acc, r) => acc + r.value, 0);
     const totalReceived = driverClosingReportRows.filter((r) => r.received === "Paid").reduce((acc, r) => acc + r.value, 0);
@@ -501,7 +505,7 @@ export function DashboardPage() {
     const finalY = (doc as any).lastAutoTable?.finalY || 80;
     doc.setFontSize(10);
     doc.text(
-      `Total: $ ${totalValue.toFixed(2)} | Paid: $ ${totalReceived.toFixed(2)} | Unpaid: $ ${totalNotReceived.toFixed(2)}`,
+      `Total: $ ${formatCurrencyAmount(totalValue)} | Paid: $ ${formatCurrencyAmount(totalReceived)} | Unpaid: $ ${formatCurrencyAmount(totalNotReceived)}`,
       40,
       finalY + 24,
     );
@@ -924,9 +928,9 @@ export function DashboardPage() {
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Card title="Trips" value={String(summary.totalTrips)} />
-            <Card title="Revenue" value={`$ ${summary.totalRevenue.toFixed(2)}`} />
-            <Card title="Paid" value={`${summary.receivedCount} • $ ${summary.receivedRevenue.toFixed(2)}`} />
-            <Card title="Unpaid" value={`${summary.notReceivedCount} • $ ${summary.notReceivedRevenue.toFixed(2)}`} />
+            <Card title="Revenue" value={`$ ${formatCurrencyAmount(summary.totalRevenue)}`} />
+            <Card title="Paid" value={`${summary.receivedCount} • $ ${formatCurrencyAmount(summary.receivedRevenue)}`} />
+            <Card title="Unpaid" value={`${summary.notReceivedCount} • $ ${formatCurrencyAmount(summary.notReceivedRevenue)}`} />
           </div>
         </div>
       ) : null}
@@ -946,7 +950,7 @@ export function DashboardPage() {
                     </span>
                     {" • "}
                     Total revenue: <span className="font-medium text-slate-900">
-                      $ {hourlyAnalysis.reduce((sum, t) => sum + t.price, 0).toFixed(2)}
+                      $ {formatCurrencyAmount(hourlyAnalysis.reduce((sum, t) => sum + t.price, 0))}
                     </span>
                   </>
                 )}
@@ -995,7 +999,7 @@ export function DashboardPage() {
                     </div>
                     <div className="md:col-span-1 md:text-right">
                       <div className="text-slate-600 md:hidden">Price</div>
-                      <div className="font-medium">$ {trip.price.toFixed(2)}</div>
+                      <div className="font-medium">$ {formatCurrencyAmount(trip.price)}</div>
                     </div>
                     <div className="md:col-span-2">
                       <div className="text-slate-600 md:hidden">Status</div>
@@ -1081,7 +1085,7 @@ export function DashboardPage() {
                     </div>
                     <div className="md:col-span-1 md:text-right">
                       <div className="text-slate-600 md:hidden">Amount</div>
-                      <div className="font-medium">$ {r.value.toFixed(2)}</div>
+                      <div className="font-medium">$ {formatCurrencyAmount(r.value)}</div>
                     </div>
                   </div>
                 </div>
@@ -1138,7 +1142,7 @@ export function DashboardPage() {
                     </div>
                     <div className="md:text-right">
                       <div className="text-slate-600 md:hidden">Value</div>
-                      <div className="font-medium">$ {r.value.toFixed(2)}</div>
+                      <div className="font-medium">$ {formatCurrencyAmount(r.value)}</div>
                     </div>
                   </div>
                 </div>
@@ -1212,7 +1216,7 @@ export function DashboardPage() {
                     </div>
                     <div className="md:col-span-1 md:text-right">
                       <div className="text-slate-600 md:hidden">Driver amount</div>
-                      <div className="font-medium">$ {r.value.toFixed(2)}</div>
+                      <div className="font-medium">$ {formatCurrencyAmount(r.value)}</div>
                     </div>
                   </div>
                 </div>
@@ -1235,7 +1239,7 @@ export function DashboardPage() {
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="text-sm font-medium text-slate-600">Total driver payouts</div>
-              <div className="text-2xl font-semibold text-slate-900">$ {driverPayoutsSummary.totalPayout.toFixed(2)}</div>
+              <div className="text-2xl font-semibold text-slate-900">$ {formatCurrencyAmount(driverPayoutsSummary.totalPayout)}</div>
             </div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -1254,7 +1258,7 @@ export function DashboardPage() {
                     <div className="font-medium text-slate-900">{d.name}</div>
                     <div className="text-xs text-slate-600">{d.tripCount} trip(s)</div>
                   </div>
-                  <div className="font-medium text-slate-900">$ {d.totalPayout.toFixed(2)}</div>
+                  <div className="font-medium text-slate-900">$ {formatCurrencyAmount(d.totalPayout)}</div>
                 </div>
               ))}
               {!loading && driverPayoutsData.length === 0 ? (
@@ -1302,15 +1306,15 @@ export function DashboardPage() {
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Total Revenue</div>
-                      <div className="font-semibold text-slate-900">$ {driver.totalRevenue.toFixed(2)}</div>
+                      <div className="font-semibold text-slate-900">$ {formatCurrencyAmount(driver.totalRevenue)}</div>
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Paid Revenue</div>
-                      <div className="text-emerald-700">$ {driver.paidRevenue.toFixed(2)}</div>
+                      <div className="text-emerald-700">$ {formatCurrencyAmount(driver.paidRevenue)}</div>
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Unpaid Revenue</div>
-                      <div className="text-amber-700">$ {driver.unpaidRevenue.toFixed(2)}</div>
+                      <div className="text-amber-700">$ {formatCurrencyAmount(driver.unpaidRevenue)}</div>
                     </div>
                   </div>
                 </div>
@@ -1361,15 +1365,15 @@ export function DashboardPage() {
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Total Revenue</div>
-                      <div className="font-semibold text-slate-900">$ {company.totalRevenue.toFixed(2)}</div>
+                      <div className="font-semibold text-slate-900">$ {formatCurrencyAmount(company.totalRevenue)}</div>
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Paid Revenue</div>
-                      <div className="text-emerald-700">$ {company.paidRevenue.toFixed(2)}</div>
+                      <div className="text-emerald-700">$ {formatCurrencyAmount(company.paidRevenue)}</div>
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Unpaid Revenue</div>
-                      <div className="text-amber-700">$ {company.unpaidRevenue.toFixed(2)}</div>
+                      <div className="text-amber-700">$ {formatCurrencyAmount(company.unpaidRevenue)}</div>
                     </div>
                   </div>
                 </div>
@@ -1420,15 +1424,15 @@ export function DashboardPage() {
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Total Revenue</div>
-                      <div className="font-semibold text-slate-900">$ {client.totalRevenue.toFixed(2)}</div>
+                      <div className="font-semibold text-slate-900">$ {formatCurrencyAmount(client.totalRevenue)}</div>
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Paid Revenue</div>
-                      <div className="text-emerald-700">$ {client.paidRevenue.toFixed(2)}</div>
+                      <div className="text-emerald-700">$ {formatCurrencyAmount(client.paidRevenue)}</div>
                     </div>
                     <div className="md:col-span-2 md:text-right">
                       <div className="text-slate-600 md:hidden">Unpaid Revenue</div>
-                      <div className="text-amber-700">$ {client.unpaidRevenue.toFixed(2)}</div>
+                      <div className="text-amber-700">$ {formatCurrencyAmount(client.unpaidRevenue)}</div>
                     </div>
                   </div>
                 </div>
@@ -1477,19 +1481,19 @@ export function DashboardPage() {
                       </div>
                       <div className="md:col-span-2 md:text-right">
                         <div className="text-slate-600 md:hidden">Total Revenue</div>
-                        <div className="font-semibold text-slate-900">$ {vehicle.totalRevenue.toFixed(2)}</div>
+                        <div className="font-semibold text-slate-900">$ {formatCurrencyAmount(vehicle.totalRevenue)}</div>
                       </div>
                       <div className="md:col-span-2 md:text-right">
                         <div className="text-slate-600 md:hidden">Average Price</div>
-                        <div className="text-slate-700">$ {vehicle.avgPrice.toFixed(2)}</div>
+                        <div className="text-slate-700">$ {formatCurrencyAmount(vehicle.avgPrice)}</div>
                       </div>
                       <div className="md:col-span-1 md:text-right">
                         <div className="text-slate-600 md:hidden">Paid Revenue</div>
-                        <div className="text-emerald-700">$ {vehicle.paidRevenue.toFixed(2)}</div>
+                        <div className="text-emerald-700">$ {formatCurrencyAmount(vehicle.paidRevenue)}</div>
                       </div>
                       <div className="md:col-span-2 md:text-right">
                         <div className="text-slate-600 md:hidden">Unpaid Revenue</div>
-                        <div className="text-amber-700">$ {vehicle.unpaidRevenue.toFixed(2)}</div>
+                        <div className="text-amber-700">$ {formatCurrencyAmount(vehicle.unpaidRevenue)}</div>
                       </div>
                     </div>
                   </div>
@@ -1539,6 +1543,13 @@ function pad2(n: number) {
 
 function formatUsDateOnly(d: Date) {
   return `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}/${d.getFullYear()}`;
+}
+
+function formatCurrencyAmount(value: number) {
+  return Number(value).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function currentMonthInputValue() {

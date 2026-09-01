@@ -583,7 +583,7 @@ export function TripsPage() {
                 </div>
                 <div className="md:col-span-2 md:text-right">
                   <div className="text-slate-600 md:hidden">Amount</div>
-                  <div className="font-medium">$ {t.price.toFixed(2)}</div>
+                  <div className="font-medium">$ {formatCurrencyAmount(t.price)}</div>
                   <div className="mt-1 flex flex-wrap items-center justify-start gap-2 md:justify-end">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
@@ -913,11 +913,11 @@ export function TripsPage() {
               <Detail label="Pickup Address" value={detailsTrip.origin} />
               <Detail label="Dropoff Address" value={detailsTrip.destination} />
               <Detail label="Stop" value={detailsTrip.stop ? String(detailsTrip.stop) : "—"} />
-              <Detail label="Amount" value={`$ ${detailsTrip.price.toFixed(2)}`} />
+              <Detail label="Amount" value={`$ ${formatCurrencyAmount(detailsTrip.price)}`} />
               <Detail
                 label="Driver value"
                 value={
-                  detailsTrip.driverValue != null ? `$ ${Number(detailsTrip.driverValue).toFixed(2)}` : "—"
+                  detailsTrip.driverValue != null ? `$ ${formatCurrencyAmount(Number(detailsTrip.driverValue))}` : "—"
                 }
               />
               <Detail label="Date/Time" value={`${formatDate(detailsTrip.startAt)} ${formatTime(detailsTrip.startAt)}`} />
@@ -1149,7 +1149,7 @@ function exportTripPdf(
       clientTableData.push(["Flight Details", trip.flightDetails]);
     }   
     clientTableData.push(
-      ["Total Amount", `$${trip.price.toFixed(2)}`],
+      ["Total Amount", `$ ${formatCurrencyAmount(trip.price)}`],
     );
 
 
@@ -1239,7 +1239,7 @@ function exportTripPdf(
   addRow("Flight Number", trip.flightNumber ? String(trip.flightNumber) : "—");
   addRow("Flight Details", trip.flightDetails ? String(trip.flightDetails) : "—");
   addRow("Payment Status", status);
-  tableData.push(["Amount", `$ ${driverAmount.toFixed(2)}`]);
+  tableData.push(["Amount", `$ ${formatCurrencyAmount(driverAmount)}`]);
 
   autoTable(doc, {
     startY: top + 35,
@@ -1340,6 +1340,13 @@ function pad2(n: number) {
 
 function formatUsDateOnly(d: Date) {
   return `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}/${d.getFullYear()}`;
+}
+
+function formatCurrencyAmount(value: number) {
+  return Number(value).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function currentMonthInputValue() {
