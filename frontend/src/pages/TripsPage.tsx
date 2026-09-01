@@ -63,7 +63,7 @@ export function TripsPage() {
 
   // filters
   const [filterWeek, setFilterWeek] = useState("");
-  const [filterMonth, setFilterMonth] = useState("");
+  const [filterMonth, setFilterMonth] = useState(() => currentMonthInputValue());
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [filterClientQuery, setFilterClientQuery] = useState("");
@@ -1340,6 +1340,11 @@ function pad2(n: number) {
 
 function formatUsDateOnly(d: Date) {
   return `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}/${d.getFullYear()}`;
+}
+
+function currentMonthInputValue() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 }
 
 function isoWeekToRange(weekValue: string): { from: Date; to: Date } | null {
