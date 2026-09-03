@@ -1047,7 +1047,9 @@ function exportTripPdf(
   const left = 25;
   const pageWidth = doc.internal.pageSize.getWidth();
   const useVerticalLogo = !!refs.useVerticalLogo;
-  const contentWidth = useVerticalLogo ? Math.min(470, pageWidth - left * 2) : pageWidth - left * 2;
+  const contentWidth = useVerticalLogo ? Math.min(440, pageWidth - left * 2) : pageWidth - left * 2;
+  const fieldColumnWidth = 120;
+  const valueColumnWidth = contentWidth - fieldColumnWidth;
   const right = pageWidth - left - contentWidth;
   let top = 40;
 
@@ -1070,7 +1072,7 @@ function exportTripPdf(
         const aspectRatio =
           imageProps?.width && imageProps?.height ? Number(imageProps.width) / Number(imageProps.height) : 2.5;
         logoWidth = contentWidth;
-        logoHeight = Math.min(190, logoWidth / Math.max(aspectRatio, 0.1));
+        logoHeight = Math.min(210, logoWidth / Math.max(aspectRatio, 0.1));
       } else {
         const imageProps = (doc as any).getImageProperties(refs.logoDataUrl);
         if (imageProps?.width && imageProps?.height) {
@@ -1080,7 +1082,7 @@ function exportTripPdf(
       }
 
       doc.addImage(refs.logoDataUrl, imgFormat, left, top, logoWidth, logoHeight);
-      top += logoHeight + (useVerticalLogo ? 20 : 5);
+      top += logoHeight + (useVerticalLogo ? 25 : 5);
     } catch (e) {
       console.error("Error loading logo:", e);
       // Continue without logo if there's an error
@@ -1178,8 +1180,8 @@ function exportTripPdf(
         textColor: [0, 0, 0],
       },
       columnStyles: {
-        0: { cellWidth: 120, fontStyle: "bold" },
-        1: { cellWidth: "auto" },
+        0: { cellWidth: fieldColumnWidth, fontStyle: "bold" },
+        1: { cellWidth: valueColumnWidth },
       },
       styles: {
         cellPadding: 5,
@@ -1266,8 +1268,8 @@ function exportTripPdf(
       textColor: [0, 0, 0],
     },
     columnStyles: {
-      0: { cellWidth: 120, fontStyle: "bold" },
-      1: { cellWidth: "auto" },
+      0: { cellWidth: fieldColumnWidth, fontStyle: "bold" },
+      1: { cellWidth: valueColumnWidth },
     },
     styles: {
       cellPadding: 5,
