@@ -6,6 +6,7 @@ import { api } from "../lib/api";
 type SettingsState = {
   ownerCompanyId?: string | null;
   logoDataUrl?: string | null;
+  useVerticalLogo?: boolean;
   enabledModules: string[];
   pdfCompany?: string | null;
   pdfEmail?: string | null;
@@ -45,6 +46,7 @@ export function ParametersPage() {
         setSettings({
           ownerCompanyId: s.ownerCompanyId ?? null,
           logoDataUrl: s.logoDataUrl ?? null,
+          useVerticalLogo: s.useVerticalLogo ?? false,
           enabledModules: s.enabledModules || [],
           pdfCompany: s.pdfCompany ?? null,
           pdfEmail: s.pdfEmail ?? null,
@@ -104,6 +106,7 @@ export function ParametersPage() {
       const updated = await api.settingsUpdate({
         ownerCompanyId: settings.ownerCompanyId ?? null,
         logoDataUrl: settings.logoDataUrl ?? null,
+        useVerticalLogo: settings.useVerticalLogo ?? false,
         enabledModules: settings.enabledModules,
         pdfCompany: settings.pdfCompany ?? null,
         pdfEmail: settings.pdfEmail ?? null,
@@ -186,6 +189,23 @@ export function ParametersPage() {
               <div className="text-xs text-slate-500">Preview</div>
             </div>
           ) : null}
+          <label className="mt-3 flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-300"
+              checked={!!settings.useVerticalLogo}
+              onChange={(e) => {
+                setSettings({ ...settings, useVerticalLogo: e.target.checked });
+                setSaved(false);
+              }}
+            />
+            <span>
+              <span className="font-medium">Usar logo vertical</span>
+              <span className="block text-xs text-slate-500">
+                Ajusta a logo no PDF para ocupar a largura da tabela e empurra as informações para baixo.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div>

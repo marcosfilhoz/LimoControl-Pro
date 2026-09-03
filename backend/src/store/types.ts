@@ -52,6 +52,7 @@ export interface AppSettings {
   id: string;
   ownerCompanyId?: string | null;
   logoDataUrl?: string | null;
+  useVerticalLogo?: boolean;
   enabledModules: string[];
   pdfCompany?: string | null;
   pdfEmail?: string | null;

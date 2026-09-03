@@ -112,6 +112,7 @@ export const api = {
     request<{
       ownerCompanyId?: string | null;
       logoDataUrl?: string | null;
+      useVerticalLogo?: boolean;
       enabledModules: string[];
       pdfCompany?: string | null;
       pdfEmail?: string | null;
@@ -120,6 +121,7 @@ export const api = {
   settingsUpdate: (data: {
     ownerCompanyId?: string | null;
     logoDataUrl?: string | null;
+    useVerticalLogo?: boolean;
     enabledModules?: string[];
     pdfCompany?: string | null;
     pdfEmail?: string | null;
@@ -128,6 +130,7 @@ export const api = {
     request<{
       ownerCompanyId?: string | null;
       logoDataUrl?: string | null;
+      useVerticalLogo?: boolean;
       enabledModules: string[];
       pdfCompany?: string | null;
       pdfEmail?: string | null;

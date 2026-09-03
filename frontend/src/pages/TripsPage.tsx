@@ -48,6 +48,7 @@ type Settings = {
   pdfEmail?: string | null;
   pdfPhone?: string | null;
   logoDataUrl?: string | null;
+  useVerticalLogo?: boolean;
 };
 
 export function TripsPage() {
@@ -939,6 +940,7 @@ export function TripsPage() {
                     companyById,
                     vehicleById,
                     logoDataUrl: settings?.logoDataUrl || null,
+                    useVerticalLogo: settings?.useVerticalLogo ?? false,
                     footer: {
                       company: settings?.pdfCompany || "",
                       email: settings?.pdfEmail || "",
@@ -959,6 +961,7 @@ export function TripsPage() {
                       companyById,
                       vehicleById,
                       logoDataUrl: settings?.logoDataUrl || null,
+                      useVerticalLogo: settings?.useVerticalLogo ?? false,
                       footer: {
                         company: settings?.pdfCompany || "",
                         email: settings?.pdfEmail || "",
@@ -1035,15 +1038,20 @@ function exportTripPdf(
     companyById: Map<string, string>;
     vehicleById: Map<string, Vehicle>;
     logoDataUrl?: string | null;
+    useVerticalLogo?: boolean;
     footer?: { company?: string; email?: string; phone?: string };
   },
   type: "driver" | "client" = "driver",
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const left = 25;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const useVerticalLogo = !!refs.useVerticalLogo;
+  const contentWidth = useVerticalLogo ? Math.min(470, pageWidth - left * 2) : pageWidth - left * 2;
+  const right = pageWidth - left - contentWidth;
   let top = 40;
 
-  // Add logo if available — left-aligned with header/table, same size as Client PDF
+  // Add logo if available, aligned to the same left/content width used by the table.
   if (refs.logoDataUrl) {
     try {
       // Determine image format from data URL
@@ -1054,26 +1062,25 @@ function exportTripPdf(
         imgFormat = "PNG";
       }
 
-      const logoHeight = 90;
-      const maxLogoWidth = 350;
-      
-      // Create image element to get dimensions
-      const img = document.createElement("img");
-      img.src = refs.logoDataUrl;
-      
-      // Use default dimensions, jsPDF will handle scaling
+      let logoHeight = 90;
       let logoWidth = logoHeight * 1.5; // Default aspect ratio
-      
-      // Try to get actual dimensions if image is already loaded
-      if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
-        logoWidth = (img.naturalWidth / img.naturalHeight) * logoHeight;
-        if (logoWidth > maxLogoWidth) {
-          logoWidth = maxLogoWidth;
+
+      if (useVerticalLogo) {
+        const imageProps = (doc as any).getImageProperties(refs.logoDataUrl);
+        const aspectRatio =
+          imageProps?.width && imageProps?.height ? Number(imageProps.width) / Number(imageProps.height) : 2.5;
+        logoWidth = contentWidth;
+        logoHeight = Math.min(190, logoWidth / Math.max(aspectRatio, 0.1));
+      } else {
+        const imageProps = (doc as any).getImageProperties(refs.logoDataUrl);
+        if (imageProps?.width && imageProps?.height) {
+          logoWidth = (Number(imageProps.width) / Number(imageProps.height)) * logoHeight;
         }
+        logoWidth = Math.min(logoWidth, 350);
       }
 
       doc.addImage(refs.logoDataUrl, imgFormat, left, top, logoWidth, logoHeight);
-      top += logoHeight + 5;
+      top += logoHeight + (useVerticalLogo ? 20 : 5);
     } catch (e) {
       console.error("Error loading logo:", e);
       // Continue without logo if there's an error
@@ -1159,6 +1166,7 @@ function exportTripPdf(
       head: [["Field", "Value"]],
       body: clientTableData,
       theme: "grid",
+      tableWidth: contentWidth,
       headStyles: {
         fillColor: [51, 51, 51],
         textColor: 255,
@@ -1178,7 +1186,7 @@ function exportTripPdf(
         lineColor: [200, 200, 200],
         lineWidth: 0.5,
       },
-      margin: { left: left, right: left },
+      margin: { left, right },
     });
 
     // Add notes if available
@@ -1246,6 +1254,7 @@ function exportTripPdf(
     head: [["Field", "Value"]],
     body: tableData,
     theme: "grid",
+    tableWidth: contentWidth,
     headStyles: {
       fillColor: [51, 51, 51],
       textColor: 255,
@@ -1265,7 +1274,7 @@ function exportTripPdf(
       lineColor: [200, 200, 200],
       lineWidth: 0.5,
     },
-    margin: { left: left, right: left },
+    margin: { left, right },
   });
 
   // Add notes if available

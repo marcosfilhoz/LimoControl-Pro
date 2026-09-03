@@ -8,6 +8,7 @@ const router = Router();
 const updateSchema = z.object({
   ownerCompanyId: z.string().nullable().optional(),
   logoDataUrl: z.string().nullable().optional(),
+  useVerticalLogo: z.boolean().optional(),
   enabledModules: z.array(z.string()).optional(),
   pdfCompany: z.string().nullable().optional(),
   pdfEmail: z.string().nullable().optional(),
