@@ -113,6 +113,7 @@ export const api = {
       ownerCompanyId?: string | null;
       logoDataUrl?: string | null;
       useVerticalLogo?: boolean;
+      useLogoColor?: boolean;
       enabledModules: string[];
       pdfCompany?: string | null;
       pdfEmail?: string | null;
@@ -122,6 +123,7 @@ export const api = {
     ownerCompanyId?: string | null;
     logoDataUrl?: string | null;
     useVerticalLogo?: boolean;
+    useLogoColor?: boolean;
     enabledModules?: string[];
     pdfCompany?: string | null;
     pdfEmail?: string | null;
@@ -131,6 +133,7 @@ export const api = {
       ownerCompanyId?: string | null;
       logoDataUrl?: string | null;
       useVerticalLogo?: boolean;
+      useLogoColor?: boolean;
       enabledModules: string[];
       pdfCompany?: string | null;
       pdfEmail?: string | null;

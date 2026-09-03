@@ -49,6 +49,7 @@ type Settings = {
   pdfPhone?: string | null;
   logoDataUrl?: string | null;
   useVerticalLogo?: boolean;
+  useLogoColor?: boolean;
 };
 
 export function TripsPage() {
@@ -941,6 +942,7 @@ export function TripsPage() {
                     vehicleById,
                     logoDataUrl: settings?.logoDataUrl || null,
                     useVerticalLogo: settings?.useVerticalLogo ?? false,
+                    useLogoColor: settings?.useLogoColor ?? false,
                     footer: {
                       company: settings?.pdfCompany || "",
                       email: settings?.pdfEmail || "",
@@ -962,6 +964,7 @@ export function TripsPage() {
                       vehicleById,
                       logoDataUrl: settings?.logoDataUrl || null,
                       useVerticalLogo: settings?.useVerticalLogo ?? false,
+                      useLogoColor: settings?.useLogoColor ?? false,
                       footer: {
                         company: settings?.pdfCompany || "",
                         email: settings?.pdfEmail || "",
@@ -1039,6 +1042,7 @@ function exportTripPdf(
     vehicleById: Map<string, Vehicle>;
     logoDataUrl?: string | null;
     useVerticalLogo?: boolean;
+    useLogoColor?: boolean;
     footer?: { company?: string; email?: string; phone?: string };
   },
   type: "driver" | "client" = "driver",
@@ -1047,6 +1051,18 @@ function exportTripPdf(
   const left = 25;
   const pageWidth = doc.internal.pageSize.getWidth();
   const useVerticalLogo = !!refs.useVerticalLogo;
+  const useLogoColor = !!refs.useLogoColor;
+  const tableColors = useLogoColor
+    ? {
+        headerFill: [12, 10, 8] as [number, number, number],
+        headerText: [218, 168, 78] as [number, number, number],
+        border: [185, 132, 54] as [number, number, number],
+      }
+    : {
+        headerFill: [51, 51, 51] as [number, number, number],
+        headerText: 255,
+        border: [200, 200, 200] as [number, number, number],
+      };
   const contentWidth = useVerticalLogo ? Math.min(440, pageWidth - left * 2) : pageWidth - left * 2;
   const fieldColumnWidth = 120;
   const valueColumnWidth = contentWidth - fieldColumnWidth;
@@ -1170,14 +1186,16 @@ function exportTripPdf(
       theme: "grid",
       tableWidth: contentWidth,
       headStyles: {
-        fillColor: [51, 51, 51],
-        textColor: 255,
+        fillColor: tableColors.headerFill,
+        textColor: tableColors.headerText,
         fontStyle: "bold",
         fontSize: 10,
+        lineColor: tableColors.border,
       },
       bodyStyles: {
         fontSize: 9,
         textColor: [0, 0, 0],
+        lineColor: tableColors.border,
       },
       columnStyles: {
         0: { cellWidth: fieldColumnWidth, fontStyle: "bold" },
@@ -1185,7 +1203,7 @@ function exportTripPdf(
       },
       styles: {
         cellPadding: 5,
-        lineColor: [200, 200, 200],
+        lineColor: tableColors.border,
         lineWidth: 0.5,
       },
       margin: { left, right },
@@ -1258,14 +1276,16 @@ function exportTripPdf(
     theme: "grid",
     tableWidth: contentWidth,
     headStyles: {
-      fillColor: [51, 51, 51],
-      textColor: 255,
+      fillColor: tableColors.headerFill,
+      textColor: tableColors.headerText,
       fontStyle: "bold",
       fontSize: 10,
+      lineColor: tableColors.border,
     },
     bodyStyles: {
       fontSize: 9,
       textColor: [0, 0, 0],
+      lineColor: tableColors.border,
     },
     columnStyles: {
       0: { cellWidth: fieldColumnWidth, fontStyle: "bold" },
@@ -1273,7 +1293,7 @@ function exportTripPdf(
     },
     styles: {
       cellPadding: 5,
-      lineColor: [200, 200, 200],
+      lineColor: tableColors.border,
       lineWidth: 0.5,
     },
     margin: { left, right },

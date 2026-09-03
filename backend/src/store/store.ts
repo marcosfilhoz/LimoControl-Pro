@@ -36,6 +36,7 @@ function toSettings(row: any): AppSettings {
     ownerCompanyId: row.owner_company_id ?? null,
     logoDataUrl: row.logo_data_url ?? null,
     useVerticalLogo: !!row.use_vertical_logo,
+    useLogoColor: !!row.use_logo_color,
     enabledModules: Array.isArray(row.enabled_modules) ? row.enabled_modules : [],
     pdfCompany: row.pdf_company ?? null,
     pdfEmail: row.pdf_email ?? null,
@@ -1302,15 +1303,15 @@ export const store = {
     async get(): Promise<AppSettings> {
       if (!pool) return memSettings;
       const res = await pool.query(
-        `select id, owner_company_id, logo_data_url, use_vertical_logo, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at
+        `select id, owner_company_id, logo_data_url, use_vertical_logo, use_logo_color, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at
          from app_settings where id='main' limit 1`
       );
       if (!res.rowCount) {
         const createdAt = nowIso();
         const insert = await pool.query(
-          `insert into app_settings (id, owner_company_id, logo_data_url, use_vertical_logo, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at)
-           values ('main', null, null, false, $1, null, null, null, $2, $2)
-           returning id, owner_company_id, logo_data_url, use_vertical_logo, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
+          `insert into app_settings (id, owner_company_id, logo_data_url, use_vertical_logo, use_logo_color, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at)
+           values ('main', null, null, false, false, $1, null, null, null, $2, $2)
+           returning id, owner_company_id, logo_data_url, use_vertical_logo, use_logo_color, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
           [defaultModules, createdAt]
         );
         return toSettings(insert.rows[0]);
@@ -1322,6 +1323,7 @@ export const store = {
       ownerCompanyId?: string | null;
       logoDataUrl?: string | null;
       useVerticalLogo?: boolean;
+      useLogoColor?: boolean;
       enabledModules?: string[];
       pdfCompany?: string | null;
       pdfEmail?: string | null;
@@ -1331,6 +1333,7 @@ export const store = {
         memSettings.ownerCompanyId = input.ownerCompanyId ?? memSettings.ownerCompanyId ?? null;
         if (input.logoDataUrl !== undefined) memSettings.logoDataUrl = input.logoDataUrl;
         if (input.useVerticalLogo !== undefined) memSettings.useVerticalLogo = input.useVerticalLogo;
+        if (input.useLogoColor !== undefined) memSettings.useLogoColor = input.useLogoColor;
         if (input.enabledModules !== undefined) memSettings.enabledModules = input.enabledModules;
         if (input.pdfCompany !== undefined) memSettings.pdfCompany = input.pdfCompany;
         if (input.pdfEmail !== undefined) memSettings.pdfEmail = input.pdfEmail;
@@ -1353,6 +1356,10 @@ export const store = {
         updates.push(`use_vertical_logo = $${paramIndex++}`);
         params.push(input.useVerticalLogo);
       }
+      if (input.useLogoColor !== undefined) {
+        updates.push(`use_logo_color = $${paramIndex++}`);
+        params.push(input.useLogoColor);
+      }
       if (input.enabledModules !== undefined) {
         updates.push(`enabled_modules = $${paramIndex++}`);
         params.push(input.enabledModules);
@@ -1373,18 +1380,19 @@ export const store = {
       params.push(nowIso());
       const res = await pool.query(
         `update app_settings set ${updates.join(", ")} where id='main'
-         returning id, owner_company_id, logo_data_url, use_vertical_logo, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
+         returning id, owner_company_id, logo_data_url, use_vertical_logo, use_logo_color, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
         params
       );
       if (!res.rowCount) {
         const inserted = await pool.query(
-          `insert into app_settings (id, owner_company_id, logo_data_url, use_vertical_logo, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at)
-           values ('main', $1, $2, $3, $4, $5, $6, $7, $8, $8)
-           returning id, owner_company_id, logo_data_url, use_vertical_logo, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
+          `insert into app_settings (id, owner_company_id, logo_data_url, use_vertical_logo, use_logo_color, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at)
+           values ('main', $1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
+           returning id, owner_company_id, logo_data_url, use_vertical_logo, use_logo_color, enabled_modules, pdf_company, pdf_email, pdf_phone, created_at, updated_at`,
           [
             input.ownerCompanyId ?? null,
             input.logoDataUrl ?? null,
             input.useVerticalLogo ?? false,
+            input.useLogoColor ?? false,
             input.enabledModules ?? defaultModules,
             input.pdfCompany ?? null,
             input.pdfEmail ?? null,

@@ -65,6 +65,7 @@ export const settings: AppSettings = {
   ownerCompanyId: null,
   logoDataUrl: null,
   useVerticalLogo: false,
+  useLogoColor: false,
   enabledModules: defaultModules,
   pdfCompany: null,
   pdfEmail: null,

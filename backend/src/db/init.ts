@@ -83,6 +83,7 @@ export async function initDbIfNeeded() {
       owner_company_id text references companies(id) on delete set null,
       logo_data_url text,
       use_vertical_logo boolean not null default false,
+      use_logo_color boolean not null default false,
       enabled_modules text[] not null default '{}'::text[],
       pdf_company text,
       pdf_email text,
@@ -120,6 +121,11 @@ export async function initDbIfNeeded() {
         null;
       else
         alter table app_settings add column use_vertical_logo boolean not null default false;
+      end if;
+      if exists (select 1 from information_schema.columns where table_name='app_settings' and column_name='use_logo_color') then
+        null;
+      else
+        alter table app_settings add column use_logo_color boolean not null default false;
       end if;
     end $$;
   `);
